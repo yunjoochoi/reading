@@ -1,0 +1,64 @@
+Improving Language Understanding by Generative Pre-Training
+
+gpt-1에 관한 논문
+
+abstract 
+자연어 이해에는 많은 tasks있다.
+unlabeled text corpora 많지만 labeled는 적다=>task 훈련의 어려움
+=>task별로 fine tuning한 generative pretraining model(디코더, unlabeled로 학습)로 해결
+
+introduction
+- raw text에서 학습 
+1) 지도학습 dependency줄이는데 필요
+2) unsupervised에서 배우는 좋은 표현은 labeled많은 도메인에서도 효과적
+- unlabeled에서 단어수준 이상을 학습하는 것은 다음 두가지 이유로 어려움
+1) 전이에 효과적인 최적화 목표의 불명확함
+2) 목표 작업에 가장 효과적인 전이 방법에 대한 합의 없음
+=>unsupervised pre-training + supervised ﬁne-tuning으로 해결!
+
+
+GPT-3
+abstract
+비지도학습 후 task-specific파인튜닝하여 성능 향상
+=>이는 많은 태스크관련 샘플이 필요
+=>사람은 적은 정보로만 새 랭귀지 태스크 수행 가능
+사람같은 모델만드는 것이 목표
+
+해결법=>랭귀지 모델의 스케일을 크게 함<-task-agnostic, few-shot performance 향상
+
+For all tasks, GPT-3 is applied without any gradient updates or fine-tuning,
+with tasks and few-shot demonstrations specified purely via text interaction with the model.
+
+introduction
+-이전의 패러다임: unsupervised pre-training + supervised ﬁne-tuning
+ 단점: 1) the need for a large dataset of labeled examples for every new task limits the applicability of language models
+	2) the generalization achieved under this paradigm can be poor because the model is overly specific to the training distribution and does not generalize well outside it
+기본적인 태스크에 대한 퍼포먼스가 과대평가될수 있다.
+	3) humans do not require large supervised datasets to learn most language tasks
+-해결 방안: 
+1) meta-learning(모델이 트레이닝 시점에 광범위한 능력을 학습한 후 새로운 작업에 빠르게 적응할 수 있도록 하는 방법)
+in-context learning: 별도 파인 튜닝 없이 모델이 자연어 지시나 예(#-shot)를 보고 작업을 수행하게 하는 방식
+단점) 파인 튜닝 들어가는 sota 모델보다 성능 떨어짐
+2) 다른 최신 언어 모델 트렌드(트랜스포머)
+언어 모델 파라미터의 증가는 in-context learning의 능력 향상으로 이어짐
+larger models are more proficient at in-context learning.
+
+'''
+"Meta-learning" → 내부 루프(inner loop)와 외부 루프(outer loop)를 포함하는 일반적인 학습 구조를 의미함.
+"In-context learning" → 메타 학습의 내부 루프를 의미함.
+"Zero-shot / One-shot / Few-shot" → 추론 시점에서 제공되는 예시의 개수에 따라 구분됨.
+모델이 추론 시점에서 완전히 새로운 작업을 학습하는지, 아니면 기존 패턴을 인식하는지는 논란의 여지가 있지만, "meta-learning"은 두 가지 가능성을 모두 포함하는 개념으로 사용됨.
+'''
+###-shot: 자연어 지시+알파(예시) 기울기 업뎃 안됨
+파인튜닝: 기울기 업데이트 존재
+GPT-3: 1750억개 파라미터 가진 자동 회귀 모델
+이 모델의 In-context learning 능력을 평가한다.
+3가지 조건 하에서 평가
+i) “few-shot learning”, or in-context learning: 모델 컨텍스트 윈도우(10~100개)에 들어갈수있는 만큼의 예시
+ii) “one-shot learning”: 단 하나의 예시
+iii) Zero-shot learning: 예시 없이 자연어로 된 지시만
+
+
+모델 크기와 문맥 내 예제 개수의 증가할수록, 성능 향상됨
+기울기 업데이트나 파인튜닝 없이 단순히 조건으로서의 예제 늘리는 것으로 해결
+
