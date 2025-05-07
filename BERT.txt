@@ -1,0 +1,64 @@
+<abstract>
+bert라는 모델을 제안한다. 양방향 인코더 표현 from 트랜스포머
+bert는 정답값 없는 텍스트에서 양방향 표현을 배운다. left, right 콘텍스트로부터.
+결과적으로 bert모델은 그냥 추가적인 아웃풋 레이어 하나만으로 파인튠 될 수 있다. =>많은 태스크(QA, 언어 추론)에서 추가적인 아키텍쳐 수정 없이 sota.
+결과적으로 BERT 모델은 단지 추가적인 출력 레이어 하나만 붙여서 파인튜닝할 수 있다. 따라서 많은 태스크(예: 질문 응답, 자연어 추론)에서 아키텍처 수정 없이 SOTA 성능을 낼 수 있다
+버트는 개념적으로 심플하고 실증적으로 파워풀하다.
+11개의 nlp태스크에서 소타(GLUE에서는 80.5%, MultiNLI에서는... SQuAD)
+
+
+[1] introduction
+언어 모델 프리트레이닝은 많은 nlp태스크에 효율적임을 알려졌다.
+nl 추론이나 패러프래이징 태스크 등등
+문장을 전체적으로 분석함르오써, 토큰레벨 태스크(ner, QA등)도 
+
+apply- ing pre-trained language representations to down- stream tasks: 
+# 엘모: 사전 학습된 임베딩(단어 벡터)을 "고정된 feature"처럼 사용하고, 태스크마다 별도의 아키텍처를 적용
+# GPT: 파인튜닝 방식, pre- trained parameters을 다운스트림 태스크에 맞춰 파인튜닝
+# 두 방법 공통점은 둘 다 unidirectional language model을 사용, 다음 단어를 예측하는 전통적인 language modeling으로 프리트레이닝
+같은 목적 함수( p(w_t | w₁, ..., w_{t−1}) )
+
+bert 도입 이유
+단방향 학습 방식은 모델 성능을 제한한다. 문장 레벨 학습에서 최적이 아니다.  특히 질의응답과 같은 토큰 수준 작업에 대한 미세 조정 기반 접근 방식은 양방향 맥락을 통합하는 것이 중요.
+질의응답은 질문과 문서 전체 맥락을 고려해 특정 위치(시작/끝 토큰)를 정확히 찾아야 함. 이때, BERT처럼 양방향으로 문장을 이해하는 모델이 훨씬 유리
+ - 마스크드 랭귀지 모델MLM(버트에서의 목적함수) 도입하여 단방향 학습의 제한성 줄임
+ - 텍스트 쌍 표현을 공동으로 사전 학습하는 "다음 문장 예측"사용
+
+
+[2] related work
+ 1. Unsupervised Feature-based Approaches
+feature-based?  텍스트 데이터 처리시 단어의 특징에 기반한다는 의미로 단어 임베딩, 빈도수 등등이 있다. (특징은 주어진 데이터에서 유용한 정보를 추출한 값들)
+Pre-trained word embeddings are an integral part of modern NLP systems, of- fering signiﬁcant improvements over embeddings learned from scratch.
+# ELMo: 기존의 단어 임베딩 개념을 다른 차원에서 확장한 것으로, 전통적인 단어 임베딩이 고정된 벡터로 단어의 의미를 표현했다면, ELMo는 문맥에 따라 달라지는 동적인 단어 임베딩.
+# NER: 이름 있는 엔터티를 인식하는 작업이다. 텍스트에서 사람, 장소, 조직과 같은 고유명사를 식별/ 양방향으로 (왼쪽과 오른쪽) 문맥을 고려해 단어를 예측하는 방식으로 단어의 의미를 학습
+=>MLM과 유사한 접근법
+
+ 2. Unsupervised Fine-tuning Approaches
+인코더가 대규모 텍스트 데이터로부터 비지도 학습되고, 지도학습 기반으로 다운스트림 태스크에 파인튜닝한다.
+처음부터 학습해야 하는 매개변수가 거의 없다는 장점.
+
+3. Transfer Learning from Supervised Data
+대규모 지도 학습 데이터로 훈련한 모델을 다른 태스크에 전이시키는 접근이 효과적이라는 연구들이 있었다.
+전이 학습: 어떤 태스크 A에서 (사전)학습한 지식(모델 파라미터 등)을 다른 태스크 B에 적용하는 것
+파인튜닝: 전이된 모델을 새로운 태스크에 맞게 추가로 학습시키는 것 (보통 소량의 라벨 데이터로)
+
+
+[3] BERT
+1. pre-training : 언라벨 데이타로 여러 종류의 사전학습 태스크에 학습
+ Task #1: Masked LM - left-to-right or right-to-left language models보다 파워풀한 이유
+양방향으로 문맥을 동시에 사용하게 되면, 각 단어가 자기 자신을 (간접적으로라도) 볼 수 있기 때문에 모델은 정답 단어를 너무 쉽게 예측하게 되어 학습이 무의미해짐. 그래서 일부 토큰를 랜덤 마스킹함. (Cloze task) 그후 only predict the masked words 식으로 학습
+마스크드라는 토큰이 학습되는걸 방지하기 위해,
+(1) the [MASK] token 80% of the time (2) a random token 10% of the time (3) the unchanged i-th token 10% of the time.
+
+ Task #2: Next Sentence Prediction (NSP): BERT가 단순히 단어 수준의 문맥만이 아니라, 문장 간의 관계도 이해할 수 있게 하려면 추가적인 학습이 필요.
+NSP라는 간단한 이진 분류 태스크를 사전 학습: 두 문장(A, B)주어졌을 때, B가 실제로 A 다음 문장인지를 예측하는 이진 분류 문제.
+50%는 진짜로 연이어 나오는 문장 쌍 → label: IsNext, 50%는 랜덤한 문장 쌍 → label: NotNext으로 학습 데이터 쉽게 만들고, 모델은 이 두 문장이 논리적으로 이어지는지를 학습.
+
+2. ﬁne-tuning: 프리트레인된 파라미터로 초기화된 후, 모든 파라미터는 다운스트림 태스크에 관련된 라벨 데이터로 파인튜닝된다.
+BERT는 문장 쌍을 단순히 이어붙여 입력함으로써, 추가적인 아키텍처 변경 없이 다양한 태스크에 대해 간단히 파인튜닝할 수 있다.
+
+
+
+L: 트랜스포머 블록레이어 수
+H: 히든사이즈
+A: 셀프어텐션 헤드 수 
