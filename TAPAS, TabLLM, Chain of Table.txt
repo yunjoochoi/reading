@@ -1,0 +1,29 @@
+<TAPAS>: Weakly Supervised Table Parsing via Pre-training
+TAPAS는 구조화된 테이블 데이터를 이해하고 질의응답하는 모델이다. 기존 Table QA 모델들이 로지컬 폼(logical form)을 중간 표현으로 사용했던 것과 달리, TAPAS는 로지컬 폼(자연어->SQL 등) 없이 바로 정답을 예측하는 방식을 취한다. 이는 QA를 의미론적 파싱(semantic parsing) 문제로 보되, 직접적인 정답만 예측함으로써 약한 감독(weak supervision)으로 학습한다.
+
+기반 아키텍처
+BERT 아키텍처를 기반으로 하되, 테이블 구조를 반영한 확장된 인코딩 방식을 사용한다.
+
+입력 임베딩 방식
+Position ID: 테이블을 위에서 아래로, 왼쪽에서 오른쪽으로 읽으며 하나의 긴 단어 시퀀스로 펼친다(flatten). 각 셀 내 단어는 WordPiece로 분할된다. 각 토큰에는 이 flatten된 순서 기반의 위치 정보가 부여된다.
+Segment Embedding: 질문과 테이블을 구분하기 위해 질문 토큰들과 테이블 토큰을 하나의 시퀀스로 연결(concatenate) 하되, 질문은 segment A, 테이블은 segment B로 구분한다.
+Additional Embeddings: 셀의 행(row), 열(column), 실제 셀 위치(cell ID) 등의 정보를 임베딩으로 추가한다. 이를 통해 모델은 테이블의 구조적 정보를 인식할 수 있다.
+
+<TabLLM>
+TabLLM은 대형 언어모델(LLM)을 활용해 테이블 기반 질의응답, 추론, 요약 등을 수행하는 프레임워크다. TAPAS와는 달리 대형 LLM의 지식과 일반화 능력을 활용하며, 테이블 내용을 LLM이 읽기 쉬운 형식으로 변환하여 입력한다.
+
+작동 원리
+1. 테이블 데이터를 전처리하여 자연어 문장 또는 세미-구조화된 포맷으로 변환한다.
+2. 질문과 함께 LLM에 입력하여 답변을 생성하거나 reasoning을 수행한다.
+3. 테이블의 긴 내용을 줄이거나 요약하는 chunking 및 압축 전략이 함께 사용될 수 있다.
+4. 답변의 정확도를 높이기 위해 retrieval, grounding, prompt tuning 등이 병행되기도 한다.
+
+
+<Chain of Table>
+Chain of Table(CoT) 방식은 Chain of Thought와 유사하게, 테이블을 기반으로 단계적 reasoning을 유도하는 전략이다.
+
+작동 원리
+1. 복잡한 테이블 질의를 단계적 질문 시퀀스로 분해한다.
+2. 각 단계에서 테이블의 특정 열, 행, 셀을 참조하여 부분 답변 또는 reasoning 중간 결과를 생성한다.
+3. 이러한 reasoning chain이 최종 응답을 산출하는데 기여하며, 이를 통해 정답 도출의 추론 경로를 투명하게 한다.
+4. 종종 LLM의 in-context learning을 활용하여 테이블 reasoning chain을 예시로 학습시킨 후 실제 문제에 적용한다.
