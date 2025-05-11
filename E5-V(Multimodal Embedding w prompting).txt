@@ -14,3 +14,8 @@ contrastive loss 계산하고 역전파
 
 <결과>
 Text-to-Image Retrieval, Composed Image Retrieval, Sentence Embeddings, Image-Image Retrieval등에서 좋은 결과
+
+
+리퀴드와의 비교
+리퀴드: 리퀴드는 멀티모달 임베딩 연구가 아니라, 그냥 멀티모달 데이터를 하나의 방식으로 토큰화해서 LLM학습
+Liquid는 토큰 단위 생성모델로, 이미지/오디오를 직접 생성하는 멀티모달 diffusion 모델과는 다름
