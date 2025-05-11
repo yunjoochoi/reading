@@ -1,0 +1,107 @@
+Learning Transferable Visual Models From Natural Language Supervision
+자연어 감독을 통한 전이 가능한 시각 모델 학습
+목표: jointly trained an image CNN and text transformer from scratch to predict the caption of an image.
+방법: CLIP에서는 CNN과 Transformer의 출력을 각각 linear layer를 거쳐 같은 차원의 공통 multi-modal 임베딩 공간에 매핑한 다음, cosine similarity를 기준으로 학습
+
+Abstract
+sota 컴퓨터 비전 시스템은 이미 정의된 카테고리로 분류를 예측하게 학습하는 방식임
+이러한 제한된 지도학습 방식은 저너럴리티를 제한함(새로운 클래스의 데이터 들어왔을때 문제발생)
+로우 텍스트로부터 이미지를 학습하여 이러한 문제 해결
+또한 더욱 폭넓은 수버비전 소스 사용가능(인터넷에서  (image, text) pairs 스크래치함)
+1. pre-training:  predicting which caption goes with which image
+2. 모델을 다운스트림 작업으로 제로샷(zero-shot) 전이: 학습된 시각적 개념을 참조 Or 새로운 개념을 설명함
+대부분의 작업에 잘 transfer되는 효과
+
+
+1. Introduction and Motivating Work
+최근 몇 년간 NLP는 raw text(웹 텍스트)를 직접 학습하는 pre-training 방법 덕분에 혁신적으로 발전했다. (ex: BERT, GPT-3)
+Task-agnostic 가능하게 하는 오토레그레시브(autoregressive), 마스킹(masked LM) 같은 범용 학습  덕분에 별도 데이터셋 맞춤 없이 zero-shot 전이 가능. 반면, 비전 분야는 여전히 ImageNet 같은 사람이 레이블링한 데이터에 의존하고 있음.
+비전에서도 raw text로 pre-training? 과거에도 이미지에 연결된 텍스트를 예측하는 방식으로 비전 representation을 배우려는 시도가 있었지만 성능은 아직 제한.
+자연어 supervision의 장점과 한계:
+장점: 레이블로 표현할 수 없는 수많은 개념까지 커버할 수 있음.
+단점: 현재 성능이 기존 supervised 방법보다 현저히 낮음 (예: ImageNet zero-shot에서 11.5% accuracy)
+대안: 최근에는 약한 supervision (ex: Instagram 해시태그, JFT-300M 같은 노이즈 데이터셋) 기반 pre-training이 실용적 대안으로 자리 잡음. 다만 여전히 한정된 클래스(1000~18000개)로만 학습해서 표현 범위에 제한.
+문제점: 고정 softmax 구조를 사용해서(리니어 출력층, 정해진 클래스 개수..), 동적으로 새로운 클래스를 예측하는 능력이 약함.
+=>CLIP: 이미지와 텍스트를 임베딩 공간에서 직접 매칭 → 새 클래스를 동적으로 인식 가능.
+또, 대규모(4억쌍) 로 학습시켜서, scaling law에 따라 성능이 자연스럽게 좋아지는 것도 확인.
+ Contrastive Language-Image Pre-training: 이미지와 텍스트를 같은 임베딩 공간에 매핑하도록 학습
+
+인터넷에 올라온 이미지 중에는 간판, 책 페이지, 손글씨 같은 "글자가 있는 이미지"를 실제 텍스트 캡션과 학습시켜서 자연스레 OCR학습도 가능했다
+
+zero-shot: 학습할 때 고정된 클래스(label) 에 맞추는 게 아니라, 이 이미지와 이 문장이 서로 맞는 쌍인가? 를 구별하는 contrastive learning
+contrastive learning: 같은 의미를 가진 (이미지, 텍스트)쌍은  벡터 거리를 가깝게, 다른 의미를 가진 (이미지, 텍스트) 쌍은 벡터 거리를 멀게
+
+
+
+2. Approach
+2.1. Natural Language Supervision
+자연어를 감독으로 사용하여 visual representation을 학습한다.
+아이디어 자체는 새롭지 않지만 과거에는 자연어 처리 방식의 어려움 때문에 발전에 문제였다.
+자연어 감독의 장점: crowd-sourced label보다 쉽게 확장, 고정된 클래스 필요 없어서 유연한 클래스 예측으로 성능 증가. 인터넷에 이미 있는 수많은 자연어 텍스트를 그냥 활용 가능.
+
+클래스 고정 방식이 아니라서, 표현과 언어를 연결하는 방식을 사용하여 제로샷 트랜스퍼(새로운 작업이나 클래스 에 대한 적응)가 가능하게 함
+="호랑이" 라는 새로운 단어를 알려주면 따로 호랑이를 훈련 안 했어도 이미지 보고 고양이와 비슷한 것을 알수있다.
+
+2.2. Creating a Sufficiently Large Dataset
+기존에 사용된 라벨링된 데이터셋 한계- 양, 질적으로 한계.
+CLIP방식은 인터넷의 엄청나게 많은 자연어+이미지 쌍으로 학습가능!
+새롭게 초대규모 데이터셋 생성. = WIT (WebImageText) : 노이즈 있긴 함
+
+2.3. Selecting an Efficient Pre-Training Method
+최신 컴퓨터 비전 모델은 엄청난 계산량 요구. 따라서 기존 방법보다 효율적이어야 스케일링 가느알 것. 특히 CLIP는 다양한 자연어 개념 배워야 해서 스케일링이 크리티컬함.
+초반 시도: 정확하게 캡션 예측하게함 - 학습 느리고 비효율적
+이는 정확한 단어를 맞추게 감독한 결과임, 텍스트 자유성 높아서 안좋은 방법
+개선: contrastive learning 도입하여 프리트레인. contrastive objective (서로 맞는 쌍인지 아닌지만 판단)해서 예측(정확한 문장/단어를 생성)보다 훨씬 적은 계산량으로 더 좋은 representation 학습
+참고: 이미지 생성 모델이 고품질 이미지 표현을 학습할 수 있지만, 동일한 성능을 가진 contrastive learning 모델보다 훨씬 더 많은 계산이 필요
+
+<CLIP의 contrastive learning>
+배치(batch) 안에 N개 (image, text) 쌍을 넣고, 진짜 매칭된 N쌍은 코사인 유사도를 최대화하고, 틀린 조합(N² - N개) 은 코사인 유사도 최소화한다.
+
+이미지 인코더, 텍스트 인코더 결합 학습
+ symmetric cross entropy loss 사용: 이미지-텍스트 양방향 매칭 loss 최적화
+각 이미지를 기준(고정)으로 모든 텍스트와 유사도 계산
+각 텍스트를 기준으로 모든 이미지와 유사도 계산
+데이터가 너무 커서 오버피팅은 주 관심사 아니였음.
+use only a linear projection to map from each encoder’s representation to the multi-modal embedding space
+
+로짓 = 확률로 바꾸기 직전의 점수(score)를 관용적으로 부름(통계학(수학)에서 원래 로짓(logit function)과는 다름)
+코사인 유사도(cosine similarity)를 로짓(logits)으로사용 - 크로스 엔트로피 시
+
+
+
+2.4. Choosing and Scaling a Model
+이미지 인코더로 ResNet-50 변형(Attention Pooling) 과 Vision Transformer 각각 실험
+텍스트 인코더로 수정된 Transformer
+
+
+2.5. Training
+에포크: 모든 모델 32 epochs 학습
+Optimizer: Adam + Decoupled weight decay
+Learning Rate Schedule: Cosine Annealing
+
+
+
+3. Experiments
+3.1. Zero-Shot Transfer
+일반적으로 컴퓨터 비전에서 zero-shot learning이란 보통 학습하지 않은 객체 클래스를 맞추는 문제였지만, CLIP에서의 Zero-shot Transfer란 더 넓은 의미로 zero-shot을 정의한다. 새로운 클래스만 맞추는 게 아니라, 아예 본 적 없는 데이터셋 자체에 대해 성능 평가
+=CLIP은 전통적인 zero-shot (새 클래스 예측)보다 더 넓게 본 적 없는 데이터셋과 분포에 대한 일반화를 zero-shot transfer로 정의하고 평가
+
+3.2 Representation Learning
+Linear classifier 기반 평가 선택
+CLIP ResNet: 기존 ResNet보다 좋지만 EfficientNet보단 약간 밀림
+CLIP ViT: compute 효율 3배
+scaling law
+
+3.3 Robustness to Natural Distribution Shift
+자연적인 변화에 따른 CLIP의 강건성
+ImageNet만 기준으로 하면 딥러닝 모델이 실제로 얼마나 일반화할 수 있는지 과대평가
+딥러닝 모델은 훈련 데이터셋 안에서 작동하는 상관관계와 패턴을 엄청 잘 학습함 그러나 이 패턴들 중 상당수는 우연(spurious) 에 기반해서 데이터셋이 바뀌면 (distribution shift) 제대로 작동하지 않음.
+CLIP은 대규모 자연어 supervision을 통해 이 문제 해결
+
+
+Limitations
+zero-shot 분류 방식의 구조적 한계: 주어진 텍스트 클래스 중에서만 고를 수 있고, 진짜 자유로운 표현 생성 불가.
+=>Contrastive + Generative joint training
+현재 CLIP은 전체 SOTA에 못 미치며 복잡하거나 미세하거나 새로운 작업에서는 CLIP 성능이 크게 떨어진다. 스케일링만으로는 부족
+진짜 Out-of-Distribution (OOD) 에서는 여전히 약하다: 디지털 폰트에는 강하지만, MNIST처럼 손글씨는 학습한 적 없어서 성능 낮음
+CLIP은 zero-shot은 잘하지만 few-shot 학습을 직접 최적화하지 않음: 선형 분류기(fitting)로만 few-shot 처리=>성능저하
