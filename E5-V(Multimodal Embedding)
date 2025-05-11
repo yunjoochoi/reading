@@ -1,0 +1,16 @@
+E5-V
+이미 훈련된 MLLM (멀티모달 LLM)을 이용해서 프롬프트 시,
+<text>\n Summary of the above sentence in one word:
+<image>\n Summary of the above image in one word:
+를 끼워넣음.
+
+텍스트 입력이든 이미지 입력이든 한 단어 요약 이라는 동일한 형태의 출력을 유도하여 비슷한 형태의 텍스트 결과를 강제함. (같은 출력의 같은 태스크 수행)
+이를 기반으로 임베딩을 계산하면 같은 의미 space에 align 가능
+
+<학습과정> :텍스트로만
+원문 텍스트에 프롬프트 붙여 MLLM에 결과 생성하게 하고 이를 임베딩
+요약 텍스트에 프롬프트 붙여 MLLM에 결과 생성하게 하고 이를 임베딩
+contrastive loss 계산하고 역전파
+
+<결과>
+Text-to-Image Retrieval, Composed Image Retrieval, Sentence Embeddings, Image-Image Retrieval등에서 좋은 결과
