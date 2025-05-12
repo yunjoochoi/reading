@@ -1,0 +1,8 @@
+
+<Large Language Model Is Not a Good Few-shot Information Extractor, but a Good Reranker for Hard Samples!>
+퓨샷 적용한 LLM은 IE영역에서 fine-tuned SLM보다 못하다는 한계- 느리고 정확도도 낮음
+SLM은 필터 역할, LLM은 리랭킹(추론) 역할
+작은 컨텍스트의 샘플들을 LLM에 프롬프팅하는게 효과적=>2.4% F1-gain !
+current LLMs are not good few-shot information extractors in general. BUT LLMs are good at hard samples. (though bad at easy samples.)
+SLM파인 튜닝은 태스크 별로, 그리고 모든 태스크에 대해 파인튜닝해보는 식으로 진행
+태스크: NER, RE, ED, EAE
