@@ -1,0 +1,11 @@
+self retrieval idea
+ IR systems을 LLM이 개선하게 하고 있음 - 인덱싱 검색 등등 
+그냥 LLM모델 자체를 문단을 학습하도록함(문장 단위로 문단을 입력함- 즉 파라미터를 학습시킨다.)
+Self-Retrieval에서는 쿼리에 대한 문단 자체를 재생성하게함- 덴스 리트리버의 임베딩 과정도 필요 없다. 
+처음엔 제목을 생성하게 하고-> 그다음에 제목(틀) 기반으로 문서 생성
+생성가능한 토큰에 제한을 둬서 원래 문서를 찾아가게 함 (디코딩 제약)
+query로 corpus passage를 직접 찾아내는 능력 학습->문장을 넣고, 해당 문장이 포함된 passage를 생성 + corpus에 정확히 매칭되게 학습
+리랭킹은 self assessment임 
+"can answer the query" (관련 있음)
+"cannot answer the query" (관련 없음)
+둘 중 하나를 생성해서 relevance 판별 후 소프트맥스 사용하여 학습
