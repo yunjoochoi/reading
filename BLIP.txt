@@ -1,0 +1,78 @@
+BLIP
+self-attention architecture
+비전 언어 사전학습은 많은 태스크 해결 능력을 향상시킴 다만, 현존하는 비전언어 기술은 이해기반 태스크 혹은 생성 기반 태스크 둘 중 하나의 태스크만 잘함.
+또, 데이터 스케일링업은 인터넷 기반 스크롤링 데이터로 진행됨->노이즈 다수, 수퍼비전에 최적은 아님
+BLIP을 제안: 이해, 생성 두 분야에 모두 잘 작동한다.
+
+노이즈낀 웹 데이터를 캡션을 부트스트랩핑함으로써 사용- 캡셔너는 의미적인 캡션을 생성, 필터는 노이즈 심한것들 제거한다. 
+sota달성: image-text retrieval, 이미지 캡셔닝, 비전큐에이
+또, 생성 능력도 뛰어났음(제로샷에서)
+
+introduction
+인코더 베이스 모델은 텍스트 생성에 바로 적용하기 힘든 부분이 있다.
+이전 소타 모델들은 거대용량의 노이즈 낀 데이터를 사용하여 소타 달성. 하지만 노이즈 데이터가 최적은 아니다.
+a Captioner: 이미지에 대해 텍스트 캡션 생성
+a Filter: 생성된 텍스트 캡션이 노이즈하면 이를 삭제
+(captioner distills its knowledge through semantically-rich synthetic captions, and the filter distills its knowledge by removing noisy captions.)
+
+contributions:
+model : (MED)멀티모달 믹스 모델 사용 -multi-task pre-training , flexible transfer learning
+두 모달 중 한개만 남겨서도 사용 가능 
+3개 방법을 결합해 사전학습 -imagetext contrastive learning, image-text matching, and image conditioned language modeling.
+
+data: 노이즈 데이터에서 학습하기 위해 부트스트래핑 방식 사용 
+MED를 캡셔너, 필터 사용해 사전학습 
+
+
+3.1. Model Architecture
+<모델 아키텍쳐>
+세개의 인코더, 하나의 텍스트 디코더로 학습하는데 학습시 3개의 다른 오차 함수를 사용한다. 둘다 인풋 토큰에 cls 붙여서 전체적인 것 학습6.
+이미지 인코더, 텍스트 인코더는 는 ITC loss로 학습시키고, 
+이미지 그라운디드 텍스트 인코더는 ITM (매칭) loss로 학습시킨다. 
+이미지 그라운디드 텍스트 디코더 LM (LLM손실함수) loss로 학습.
+
+비전 트랜스포머 이용함. (컴퓨팅 관점에서 ViT가 더 효율적이다. )
+=인풋 이미지를 패치로 나누고 flatten 후 임베딩해서 시퀀스로 이어붙인다. +cls로 글로벌피쳐 표현
+
+- multimodal mixture of encoder-decoder (MED)은 세 가지 기능 중 하나로 작동
+(1) Unimodal encoder: 텍스트, 이미지 각각을 인코딩한다.
+텍스트 인코더는 버트고 cls토큰은 인풋마다 붙인다 (문장요약표현학습)
+이미지는 ViT인코더.
+
+(2) Image-grounded text encoder: 
+**grounded: 어떤 정보를 기반하여 강화된, 즉 이미지 기반으로 보강된 텍스트인코더
+셀프어텐션(양방향) 레이어, FFN 사이에 크로스 어텐션 레이어를 끼워넣음(각 트랜스포머 블록마다)
+입력에 [Encode] 토큰을 추가하고, 이 토큰의 출력을 이미지-텍스트 쌍의 멀티모달 표현
+
+(3) Image-grounded text decoder:
+순방향 샐프 어텐션 사용(디코더니까).
+[Decode] 토큰으로 문장의 시작을 알리고, End-of-Sequence 토큰으로 끝을 표시 
+
+
+3.2. Pre-training Objectives
+세가지의 다른 목적함수 사용
+
+Image-Text Contrastive Loss (ITC)
+Unimodal Encoder 에 사용한다. 이미지와 텍스트가 같은 쌍이면 비슷한 표현을 가지도록 이미지/텍스트 트랜스포머를 학습시킴.=이미지와 텍스트 특징을 가까이 정렬
+Momentum Encoder를 써서 soft 정답 레이블 생성 
+
+Image-Text Matching Loss (ITM)
+이미지와 텍스트가 매칭되었는지 이진 분류
+Hard Negative Mining- 배치 내 가장 헷갈리는 부정 샘플을 골라 학습해서 효율성 증대
+
+Language Modeling Loss (LM)
+Image-Grounded Text Decoder에 사용된다. 
+이미지를 보고 텍스트를 생성한다. 
+일반적인 손실함수인 크로스 엔트로피 사용하고, 오토 리그레시브로 앞까지 나온 단어들 보고 다음 단어 예측한다.
+label smoothing 사용- 정답 레이블을 100% 확신하게 하지 않고 약간 오차 허용
+
+SA layers 제외하고는 텍스트 인코더와 디코더는 모든 파라미터를 공유한다. 
+
+
+3.3. CapFilt
+사람 주석 데이터는 매우 적기에 웹에서 크롤링한 데이터를 대향으로 사용함
+다만 노이즈가 크다는 것이 문제. 노이즈는 비효율을 낳는다.
+그래서 새로운 방식으로, 웹 이미지로부터 Image-grounded Text Decoder(기존에 사전학습된 MED 모델)로 새롭게 캡셔닝된 데이터 생성
+필터 모델은 Image-grounded Text Encoder사용하여 ITM 헤드가 Unmatched로 판단한 텍스트는 노이즈로 간주.
+이후 COCO 데이터로 각각 가볍게 파인튜닝(finetuning)
+=>더 깨끗한 Vision-Language pretraining 데이터셋 만들 수 있다.
