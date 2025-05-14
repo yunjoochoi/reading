@@ -1,0 +1,31 @@
+문서 레이아웃 탐지
+문서 타입, 타이틀, 복잡한 레이아웃 탐지의 어려움 
+또 큰 스케일의 데이터 프로세싱에 대해 realtime 퍼포먼스 X
+
+PP-DocLayout-L: 높은 정확도 모델로 RT-DETR-L detector를 기반으로 한다.
+PP-DocLayout-M: 발란스있는모델
+PP-DocLayout-S: 높은 효율성(리소스 제한 환경)
+
+표, 수식들의 레이아웃을 디택션한다
+기존 방법론의 문제점
+1. 문서 타입별로 일반화 힘듬 - 보통 아카데믹 페이퍼에 집중되어 신문이나 증권사리포트에 적용 힘듬
+2. 복잡한 레이아웃 잘 못다룸
+3. 프로세싱 스피드 느림(리얼타임불가)
+
+유니파이드된 사전학습 DLA
+이전 연구들은 특정 도메인 국한, 세밀화된 레이아웃 탐지, 시간적 비효율있었다
+
+
+
+3.1. Knowledge Distillation Framework
+**Backbone:: 입력 데이터를 받아서 유용한 feature를 추출하는 기본 신경망 구조 (인코더)
+teacher model: visual encoder Vary-VIT-B model of GOT-OCR2.0 (ViTransformer 기반 비전 백본) 
+student model: PP-HGNetV2-B4 (CNN 계열 백본)
+둘다 이미지 백본, 텍스트 능력 x
+
+3.2. Semi-supervised Learning
+PP-DocLayout-L을 통해 생성한 슈도라벨링(M,S모델을 위한 학습데이터증강)
+Adaptive Threshold Selection-어떻게 고품질 Pseudo-Label로 변환?
+고정 임계값(fixed threshold, 예: 0.5) 방식은 문제-카테고리마다 학습 난이도가 다르다는 점을 반영 못함
+ 각 클래스마다 최적의 임계값을 따로 찾음-후보 레이아웃마다 각 클래스에 속할 확률이 주어졌을 때, f1점수를 최대화하는 threshold를 찾음
+Labeled data로 최적 임계값 계산하고 Unlabeled data에 적용해서 pseudo-label 생성
