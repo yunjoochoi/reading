@@ -1,0 +1,69 @@
+Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
+
+<abstract>
+knowledge-intensive tasks에서는 LLM능력이 떨어짐
+학습된 파라미터만으로는 부족하고 특정 태스크 수행 능력 떨어짐
+파인튜닝 레서피인 RAG제안(사전학습 파라미터+non파라메트릭)->언어 생성
+
+파라메트릭: seq2seq으로 학습
+논파라메트릭: 위키피디아의 덴스인덱스(사전학습된 뉴럴 리트리버로 검색됨)
+
+<2개 컨티션으로 나누어 실험>
+전체 생성된 시퀀스에 동일 패시지 사용하는 경우(top-k문서 리트리벌후 마지널라이즈)
+토큰당 다른 패시지 이용하는 경우
+
+=>QA 태스크들에서 sota달성
+
+
+1 Introduction
+기존 LLM 한계: cannot easily expand or revise their memory, can’t straightforwardly provide insight into their predictions, and may produce “hallucinations” 
+
+
+
+2 Methods
+pre-trained retriever (Query Encoder + Document Index) with a pre-trained seq2seq model (Generator) 
+
+2.1 Models
+RAG-Sequence Model: 하나의 시퀀스를 생성하기 위해 같은 문서를 사용한다. 
+리트리버가 탑케이 다큐먼트 가져오고 제너레이터가 결과 시퀀스 확률을 각 다큐먼트에 대해 만들고 나서 이를 마지널라이즈(평균화) 한다.
+RAG-Token Model: 각 타겟 토큰마다 다른 latent document를 사용할 수 있도록 설계됨
+이 방식으로 제너레이터가 답변을 생성할 때 다큐먼트의 내 여러 컨텐츠를 고르게 할 수 있다.
+확실하게하면, 시퀀스 생성 위해 처음에 리트리버가 1번 작동하고, 쿼리와 관련한 다큐먼트들을 가지고 온다. 이후, 제너레이터가 다음 토큰 분포에 대해 각 다큐먼트들의 확률을 계산한다. 
+
+차이: 마지널라이즈를 매 토큰 생성마다 하느냐/ 끝나고 나서 한번 하느냐
+
+
+2.2 Retriever: DPR
+DPR은 바이인코더 아키텍쳐로 도큐먼트, 쿼리 인코딩에 각각 버트를 사용한다.
+top-k 문서를 고르는 문제는 결국 MIPS 문제인데 이는 선형 시간을 필요로함. 근데 효율적인 근사 알고리즘 도입하면 서브선형 시간에 풀 수 있다. (벡터 디비들에서 사용하는 ANN알고리즘같은것)
+리트리버와 다큐먼트 인덱스(논 파라메트릭)를 만들기 위해 사전학습된 버트 인코더 기반으로 TriviaQ등 사용하여 추가로 파인튜닝됨
+
+
+
+2.3 Generator: BART
+사전학습된 바트모델 사용한다.쿼리와 검색된 문서를 결합하기 위해 그냥 단순리 이어붙인다. 그후 버트에 넣거 제너레이트시킨다. 
+
+
+
+2.4 Training
+정답 시퀀스(target)에 대해 마지널 로그우도(marginal log-likelihood) 최소화
+다큐먼트 인덱스르 매번 업데이트해야하므로 다큐먼트 인코더는 고정시킨다(학습안함)
+쿼리 인코더와 바트제너레이터만 학습함.
+
+
+
+2.5 Decoding
+**Beam Search는 문장을 생성할 때 가장 가능성 높은 여러 후보 시퀀스를 동시에 추적하는 탐욕 + 너비 우선 탐색의 절충 알고리즘
+RAG-Token: 마치 일반적인 auto-regressive seq2seq 모델처럼 사용
+RAG-Sequence: 디코딩이 좀 복잡. 전체 시퀀스에 대해 marginal likelihood 계산하는 구조로, 각 토큰별로 분리하여 빔서치 불가-> 
+방법1. 각 문서에 대해 빔서치하는 것으로 바꿈
+각 문서에 대해 beam search - 각 문서에서 얻은 후보 시퀀스 y∈Y 를 모음
+-그런데 어떤 y는 특정 문서에서 생성되지 않았을 수 있음→ 이 경우, 해당 y에 대해 추가 forward pass를 실행
+방법2 Fast Decoding
+beam search에서 나온 y만을 사용하고, 특정 문서 z에서 y가 나오지 않았다면 0 으로 근사해서 계산 생략
+
+
+한계
+DPR 기반 retriever는 질문과 문서 간 의미적 연결을 잘 놓치는 경우가 있음
+Retriever와 Generator의 분리된 학습→ 가장 좋은 문서를 뽑았더라도, generator가 그것을 잘 활용하지 못하는 경우 발생(end-to-end fine-tuning은 돈이 많이든다)
+end-to-end로 retriever까지 학습하면 대용량 FAISS index도 매번 갱신
