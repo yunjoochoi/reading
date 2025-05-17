@@ -1,0 +1,141 @@
+Liquid
+Language Models are Scalable and Unified Multi-modal Generators
+
+리퀴드를 제안한다. 자기회귀 생성 파라다임- 비주얼 이해와 생성을 원활하게 통합
+이미지를 이산코드로 토크나이즈하고, 이 코드 임베딩을 텍스트 토큰과 같이 학습시킨다. 비전과 랭귀지를 쉐어하는 통합 피처 스페이스에서 같이 학습.
+이전 멀티모달모델들과 달리 리퀴드는 LLM 하나로 통합을 달성- 외부에 사전학습된 비주얼 임ㅁ베딩 사용할 필요가 없음 (CLIP방식) 
+처음으로, 리퀴드는 비전과 텍스트를 같은 공간에서 학습시킴으로써 필연적으로 발생하는 성능 저하를 모델의 스케일을 늘림으로서 해결가능하다는 것을 시사했다.
+통합된 토큰공간이 오히려 비주얼 생성과 이해를 늘린다. (이전 모델에서는 간섭이 심했음- 어 그러면 할루시네이션이 줄어들었나?) - 서로의 능력 증대에 도움이 된다.
+현재 LLM이 리퀴드의 파운데이션으로서 기능할 수 있다. 학습 비용 줄임! Chameleon보다 높은 성능! vision-language and text-only tasks보다 높은 성능!
+LLM은 훌륭한 멀티모달 제너레이터이다.
+
+
+
+1 Introduction
+CLIP과 같은 경우는 a two-stage training process to align the vision-and-language feature
+혹은 text-guided visual generation경우, external diffusion model필요
+=>external visual module이용하는 것은 추가적인 아키텍쳐 복장성을 야기한다. 성능향상 보틀넥이 됨
+
+LLM에서 BPE[58] 토크나이저가 수행하는 역할과 유사하게, VQVAE는 원시 픽셀과 이산 코드 간의 양방향 매핑을 설정하여 CLIP같이 사전학습된 인코더 사용이나 디퓨전의 사전 학습된 제너레이터에 의존하지 않고 텍스트 토큰과 비주얼 코드 임베딩을 공동으로 학습한다. 
+게다가 이산적 비주얼 토큰을 도입하여 같은 다음 토큰 예측 손실을 가능하게 한다.
+카멜레온같은 선행 연구들은 이러한 방법은 스크래치부터 시작해야하므로 계산을 막대하게 해야했다.
+다른 연구에서는 생성에 디퓨전을 도입했지만, 시각적 생성과 텍스트 생성 간에 학습 목표가 일관되지 않았다.
+또 다른 모델에서는 이미지 토크나이저 이후 추가적인 인코딩 학습이 필요했고, 또는 시각적 토큰에 대한 전처리나 후처리가 필요했었다.
+
+본 논문에서는 LLM만을 다중 모드 생성기로 사용하는 것의 잠재력을 탐구한다.
+
+이미지 토크나이저: VQGAN to encode images into discrete tokens
+텍스트 토크나이저: BPE processes text
+
+LLM의 보캅을 늘리는 식으로 통합된 학습(이미지라는 새로운언어학습)
+기존 LLM을 학습포인트로 사용해서 어휘를 늘리는 방식 - > 연산 줄임
+
+6개의 각기 다른 사이즈의 LLM을 이미지와 텍스트 페어, 랭귀지 데이터로 학습시킴
+각 모델별로, 3가지 다른 버전- 텍스트 온리, 이미지 생성 데이터, 둘다 
+=>성능과 상호관계 분석하려고
+
+발견
+1) 이미지-텍스트 공동공간학습은 스케일링 로우를 따른다. (텍스트 온리, 이미지 생성 단일이던지 간에)
+2)이미지-텍스트 쌍 및 순수 언어 데이터와 같은 다중 모달 데이터로 학습할 경우, 모델의 언어 성능은 언어 데이터만으로 학습한 모델에 비해 낮다. - 하지만 모델 크기 늘리면 된다.
+3) 시각적 이해 작업과 시각적 생성 작업은 서로에게 도움이 될 수 있다.
+
+
+
+2 Preliminaries
+Image Tokenizer.
+VQGAN은 512x512 이미지를 8192 크기의 코드북에 있는 32x32 개별 토큰으로 인코딩하고, 이 토큰들을 LLM을 위한 1024 이미지 토큰으로 평탄화.
+
+Architecture.
+LLM base model로 GEMMA-7B 사용
+이외로 시각-언어 상충 관계 조사 위해 Llama-3 1B[14], GEMMA-2 시리즈[66](2B, 9B 스케일), Qwen2.5 시리즈도 실험
+모델 기존 아키텍쳐는 고정, 파라미터는 사전학습된 상태에서 추가학습 가능하게, 이산 이미지 토큰에 대해 8,192(코드북)개의 새로운 학습 가능 임베딩을 추가
+
+Data Preparation.
+사전 훈련된 LLM의 언어 능력을 유지하기 위해, 사전 훈련 단계에 사용된 공개 데이터셋에서 텍스트 전용 데이터를 샘플링 (15M text data from DCLM, ..)
+이미지-텍스트 쌍의 경우, JourneyDB[46](이미지, 프롬프트, 캡션 등 포함) 와 내부 MidJourney 스타일 합성 데이터를 사용하여 3,000만 개의 고품질 이미지 데이터를 컴파일하고, 이를 통해 총 300억 개의 이미지 토큰을 확보
+
+
+Training Procedure. 
+image-text pair data: [bos] {text token} [boi] {image token} [eoi][eos] 구조
+[bos] and [eos] are the begin-of-sequence and end-of-sequence tokens
+[boi] and [eoi] to signify the start and end of image tokens. 
+20퍼센트는 거꾸로해서 이미지 이해 능력 높인다.
+the training objective is consistent with LLMs via next-token prediction and utilizes the standard cross-entropy loss.
+7B 이상의 모델은 초기 지속적인 사전 학습 단계에서 손실 스파이크가 발생하는 경향=>더 큰 모델의 최대 경사 표준을 0.5로 줄이고(Gradient Clipping, gradient의 크기(norm)가 0.5 이상이면 잘라냄) 최대-z 손실(로짓 벡터에서 최댓값을 기준으로 normalization, 최대값 빼는거)[77]을 사용하여 로짓을 정규화
+로짓 = 최종 출력층(softmax 직전)의 숫자값
+
+context length 2048: 최대토큰 수 2048
+이미지가 1024로 픽스되있고 eos같은거 생각하면 최대 텍스트 토큰은 1000개조금넘게가능할듯.
+
+
+3 Scaling, Trade-offs, and Synergy in Unified Multi-modal Generation
+§3.1 시각 생성은 LLM에서 관찰되는 스케일링 법칙을 준수하는가?
+§3.2 시각 생성과 언어 과제는 상호 간섭 또는 향상을 보이는가?
+§3.3 시각 이해와 시각 생성 사이에 상호 유익한 관계가 있는가?
+
+평가는
+시각 생성 / 언어 능력 / 비주얼 이해 태스크(V to Text)
+
+3.1 Scaling Results on Visual Generation
+작은 모델은 빠르게 학습되지만 성능 한계가 존재,
+큰 모델은 느리게 성장하지만 최종적으로 더 높은 시각 생성 성능을 달성
+LLM에 시각 토큰 처리를 추가해도, 성능은 여전히 언어 모델에서 관찰되는 스케일 법칙을 따름
+
+3.2 Is there a conflict between visual and language generation?
+언어 생성 성능은 작은 모델에서는 멀티모달 학습 시 언어 성능 저하 (trade-off) 발생 모델 크기가 커질수록 이 trade-off는 점차 사라짐
+시각 생성 성능은 모든 크기의 모델에서 멀티모달 학습 시 validation loss 증가
+VQA 점수에 대한 부정적인 영향은 모델 크기가 증가함에 따라 감소하는걸 보아 큰 모델은 시각 성능도 잘 유지한다고 할수있다.
+
+
+3.3 Will Understanding and Generation Tasks Mutually Improve Each Other?
+시각 이해와 시각 생성 사이에는 시너지 관계가 존재하며, 어느 한쪽의 데이터를 더 주면 양쪽 성능이 동시에 좋아진다. 멀티모달 LLM은 생성과 이해를 분리하지 않고 함께 학습하면 더 좋은 성능을 낼 수 있음. LLM을 범용 멀티모달 생성기로 활용할 수 있는 강력한 근거
+mutual enhancement between visual understanding and generation tasks:
+expanding training data for one improves performance in both.
+
+
+4. Experiment
+**Fidality: 얼마나 진짜처럼 보이는가, 낮을수록 좋음
+
+Liquid는 다른 diffusion 모델들보다 훨씬 적은 이미지 데이터로 학습했음에도, LM 기반으로 학습되기 때문에 프롬프트와 생성 이미지 간 의미적 연관성을 잘 이해함
+이미지 품질도 대부분의 diffusion 모델보다도 뛰어남
+
+LLM의 동적 토큰 생성 능력 덕분에, 프롬프트에 "length is: width is:" 등의 지시어를 넣으면, 원하는 해상도에 맞는 이미지 토큰 생성 가능
+
+기존 모델은 단순한 이미지-텍스트 정렬만 평가했지만 WISE 벤치마크는 더 어려운 추론 기반 생성 프롬프트 사용했다. 결과적으로 Liquid는 복잡한 추론 상황에서 기존 MLLM들보다 성능 우수함 입증
+
+텍스트 LLM의 핵심 능력인 In-Context Learning 을 Liquid 같은 멀티모달 모델에서도 발현될 수 있는가? 실험
+<image1> is sunny, <image2> is rainy, <image3> ? => is snowy로 추론에 꽤 성공적.
+
+
+
+Limitations:
+Discrete token 기반 모델들은 CLIP 기반 continuous token 모델들보다 시각 이해 성능이 낮은 경향
+리퀴드는 보캡을 늘린거고, 이미지-텍스트 임베딩 공간이 정렬되지 않음 크로스 어텥ㄴ션 사용하여 이미지-텍스트 쌍을 비슷한 위치로 위치시키지 않았음
+=>이미지 토큰과 텍스트 토큰은 같은 의미라도 벡터 공간에서 멀리 떨어져 있음
+ *VQ-VAE의 코드북 학습은 이미지복원 중심임
+*Liquid는 이미지-텍스트 토큰을 이어붙여 학습하기는한데, 다음 토큰 예측방식 학습이지 정렬 방식은 아님.. 암묵적으로 관계를 배우긴 할것임 근데 이미지 토큰이 기존의 언어 의미 공간에 잘 위치되는것은 아닐 것이다.
+근데 기존 패러다임은 워드임베딩이므로 비슷한 단어뜻은 비슷한 공간에 위치하고 단어간 관계가 스페이스에 학습되는것임
+워드임베딩- 신경망기반, 단어들 의미기반 임베딩완료
+BPE- 규칙기반(빈도), BPE는 모델이 학습되기 이전, 텍스트 데이터를 처리하기 위한 사전 준비 과정에서 사용, 즉 임베딩한상태가아니고 단위로나눠논것! BPE이후 보통 임베딩테이블에 매핑되고(보캡사이즈*임베딩차원), 어텐션 통해 임베딩테이블학습
+
+토큰과 디퓨전 방식이 다른것은 디퓨전모델은 픽셀의 연속적인 확률 분포를 학습하고 토큰처럼 discrete(불연속) 값이 아님
+ (조건부 확률 시퀀스), (연속적 확률 모델링)
+
+
+
+          ViT(인코더)			VQ-VAE(인코더디코더) + GPT (예: DALL·E, Parti)
+토큰	연속값 (float patch embedding)	 정수값 (VQ codebook index)
+정보 손실	없음 (linear 추출)	         있음 (압축 + 선택 기반)
+표현 방식	정확하고 부드러운 continuous 표현	압축된 discrete 표현
+1. Token 0 (Patch 1) → [ 0.023, -1.42,  0.51, ...,  0.88 ]  패치 중 1개
+2. [  231,  5730,  1023,  880,  ... ,  717,  1833 ] 전체 이미지 1개 나타냄
+의미 임베딩은 codebook을 통해 lookup 필요
+
+
+Liquid addresses the following limitations of previous works:
+1. 이전의 유니파이 멀티모달들은 언어능력저하 사이드이펙트있었지만 이를 해결
+2. 언어능력에서의 거듭제곱 스케일링 법칙이 관찰되었었는데 이게 시각 생성 학습 후에도 유지되는지 실험한 연구는 이전에 없음
+3. 이전 연구들은 시각이해와 생성 과제 간 충돌 관찰이 보고되었는데, 통합토큰공간이 시각적 생성 과제와 이해 과제가 서로 향상되도록 하여 충돌 제거죔
+
+
+*CLIP에서 이미지와 텍스트는 동일한 인코더(파라미터)를 공유하진 않는다. 하지만 둘의 출력은 동일한 차원(dimensionality)의 임베딩 공간에 정렬되도록 (각각의 인코더를)학습(두 modality가 동일한 의미 공간에서 비교 가능)
