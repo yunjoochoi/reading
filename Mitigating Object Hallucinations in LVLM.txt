@@ -1,0 +1,65 @@
+Mitigating Object Hallucinations in Large Vision-Language Models through
+Visual Contrastive Decoding
+
+
+LVLM 라지 비전 랭귀지 모델은 오브젝트 할루시네이션을 겪는다. 
+모델이 그럴듯한 대답을 하긴 하는데, 이미지에 없는 물체를 말한다.
+이를 완화하기 위해 visual contrastive decoding을 제시한다. 단순하고, 트레이닝이 없어도 되는 방법이다.
+원본/ 왜곡된 비주얼 인풋 각각에서 아웃풋을 대조시키는 방식을 사용한다.
+
+확률적 버아어스와 유니모달 사전분포에 너무 의지하는 부분을 효과적으로 줄인다.
+이 방식으로 실제 비주얼에서 기반한 아웃풋이 생성되도혹 한다.
+
+1. Introduction
+할루시네이션을 줄이는 것은 자동화, 의료 등에서 매우 중요하다.
+이전 VLM 할루시네이션 연구들은 할루시네이션 타겟데이터를 만들어 파인튜닝하거나, revisor를 달아서 사후에 수정, 강화학습 도입하는 등..
+하지만 사람의 손을 타거나 컴퓨팅비용 발생
+이 논문에서 제시한 방신은 모델의 LLM over 릴라이언스를 줄인다.
+
+3. Method
+3.1. Decoding of Vision-Language Models
+LVLM의 할루시네이션 이유
+(1) 학습 데이터에 내재된 통계적 편향
+(2) 랭귀지에 너무 많이ㅣ 의존(파워풀 LLM디코더 사용하기때문)
+
+=>사물 환각을 완화하기 위해 먼저 이러한 바람직하지 않은 행동을 모호한 입력으로 증폭시킨 후, 이어서 디코딩 과정에서 이러한 행동(모호한 입력)과 대조
+
+3.2. Visual Uncertainty Amplifies Hallucinations
+시각적 불확실성의 증가가 LVLM의 언어 사전 및 통계적 편향을 증폭시켜 사물 환각을 악화시킬 수 있다는 가정을 검증하기 위해 실험.
+가우시안 노이즈 추가
+점진적으로 노이즈를 조금씩 추가하고 gradually loses its distinguishable features as step t goes larger, where the amount of noise added in each step is controlled by γ.
+Visual Uncertainty Amplifies Language Priors-시각적 불확실성은 언어 사전 확률을 증폭시킨다. 그림 2는 시각적 불확실성으로 인해 LVLM이 시각적 증거를 간과하고 언어 사전 확률을 과도하게 활용하여 의사 결정을 내릴 수 있음을 보여줌. 모호한 시각적 자극에 직면했을 때, LVLM은 이러한 기존의 텍스트 기반 예측을 "안전망"으로 오해.
+
+시각적 불확실성이 사전 학습에서의 통계적 편향을 증폭시킬 수 있다는 가설을 더 자세히 조사하기 위해 
+(1) LVLM이 왜곡된 시각 입력으로 빈번하게 객체를 환각하는지 여부와 
+(2) LVLM이 왜곡된 시각 입력으로 이미지에서 기준 객체와 자주 동시에 발생하는 객체를 환각할 가능성이 더 높은지 확인
+
+VCD (Visual Contrastive Decoding): VCD는 LVLM의 통계적 편향과 언어적 선입견을 상쇄하기 위해 고안된 방법으로, 원래 시각 입력과 왜곡된 시각 입력으로부터 생성된 모델 출력들을 대조(contrast)하는 방식이다.
+1. 원래 시각 입력 v에 기반한 출력 분포
+2. 사전에 정의된 왜곡(예: 가우시안 노이즈 마스크)을 v에 적용한 왜곡된 시각 입력 v′에 기반한 출력 분포(bias가 높아짐->이것을 뭔래 분포에 빼면 높은 바이어스를 제거 가능)
+
+그런 다음, 이 두 분포의 차이점을 활용하여 새로운 contrastive 확률 분포생성
+왜곡된 입력: 시각 정보가 흐려짐 → 모델은 시각 정보보다는 언어 선입견(language priors)과 통계적 편향(statistical bias)에 의존, 반면, 정상적인 입력 기반 분포는 그나마 시각 정보를 좀 더 반영.
+where larger α values indicate a stronger amplification of differences between the two distributions
+
+하지만 왜곡 시각 정보가 항상 틀린 것음 아님. 유용한 리즈닝을 갖추고 있을수도-> 원래 시각 입력 기반 출력 분포의 신뢰도(confidence level)를 기반으로 한 적응형 타당성 제약(adaptive plausibility constraint)도입
+=왜곡 입력에서 나온 결과라도, 원래 입력에서의 확률이 충분히 높다면 유지
+
+원본 이미지에서 t시점의 충분히 높은 확률만 남기고, 나머지 토큰들은 제거한다.
+이후 왜곡 이미지에서도 원본 기준 상위 토큰만 유지되기 때문에,
+바이어스 조절은 신뢰도 높은 후보들에 한해서만 이루어지고,
+결과적으로 타당성이 높아진다.
+
+
+4. Experiments
+모든 모델에서 VCD 적용 시 객체 수준(object-level) 환각 감소 효과가 명확함.
+
+속성 수준(attribute-level)에서도 특히 색상(Color) 관련 환각이 줄어들어 전체 성능이 개선됨.
+
+다만, 위치(Position) 관련 환각에 대해서는 성능 향상이 거의 없었고, 이는 현재 LVLM들이 공간적 추론 능력이 약함을 시사
+
+
+5. Conclusion and Limitation
+VCD가 환각을 효과적으로 줄이고, LVLM의 전반적인 시각 인식 능력(perception capability)을 향상.
+본 연구에서는 시각적 불확실성을 유도하는 방법으로 단순한 가우시안 노이즈만 사용했으나, 향후에는 객체 단위 블러링(object-level blurring)과 같은 더 정밀한 왜곡 기법이 더 나은 성능을 낼 가능성이 있다.
+최근 주목받고 있는 비디오 이해(video understanding) 영역은 다루지 못함.
