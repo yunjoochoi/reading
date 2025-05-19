@@ -1,0 +1,42 @@
+SEED는 이미지를 AR하게 LLM과 통합하여 학습시킬수있게 이미지 토크나이저 SEED방법을 제안.
+
+
+동시 연구들은 주로 다중 모달 훈련(후반 두 단계)을 강조하는 반면, 이 연구는 시각적 토크나이저(첫 번째 단계)에 더 중점을 둡니다. 우리는 적절한 시각적 토크나이저가 (i) 시각적 토큰과 단어 토큰 간의 의미적 정렬을 용이하게 하고, (ii) 시각적 토큰에 대한 특별한 조정 없이 다중 모달 데이터에 대한 LLM의 독창적인 훈련 레시피(즉, 다음 단어 예측)를 가능하게 함으로써 후속 다중 모달 훈련을 용이하게 할 수 있다고 가정
+
+SEED는 다음과 같은 특성을 갖는 새로운 이미지 토크나이저입니다:
+
+1D causal dependency:
+기존 2D 기반 이미지 토크나이저(VQ-VAE 등)는 LLM의 단방향 attention 흐름과 맞지 않음
+→ 그래서 우리는 이미지의 **래스터 순서(raster order)**를 따라 1D 토큰 시퀀스로 변환합니다
+
+고수준 의미(high-level semantics):
+텍스트 토큰처럼 이미지 토큰도 **의미 있는 단위(예: "dog", "table")**를 나타내야
+언어 모델과 정렬되고 재사용 가능함
+
+
+SEED 토크나이저 작동방식 
+
+1. ViT 인코더로 2D 피쳐맵 생성 
+
+2. Causal Q-Former
+→ ViT의 2D feature를 1D 시퀀스 형태의 의미 임베딩으로 변환
+
+3. VQ Codebook (기존 텍스트 vocab과 통합하기 위해 이미지를 정수 시퀀스로 변환)
+
+4. Reverse Q-Former(디코딩용 임베딩 복원)
+
+5. UNet 디코더(UNet 디코더)
+→ 이미지 재생성용 (Stable Diffusion 기반)
+
+양자화? 연속 벡터 공간(ℝ^d)의 벡터를, 미리 정의된 codebook의 discrete vector 중 가장 가까운 것 하나로 매핑시키는 과정
+
+
+장점
+is capable of both image-to-text and text-to-image generation tasks
+==통합된 방법의 제너레이터 사용해야 이 두가지가 동시에 (모델수정없이) 가능하다.
+
+limitations
+VQ-VAE 기반의 토크나이저는 낮은 수준의 정보를 포착하여 LLM이 효과적으로 멀티모달 이해 작업을 수행하기 어렯다
+SEED는 시각 이해와 생성을 통합하려는 시도를 했지만, 멀티모달 능력의 자발적 발현(emergent capabilities) 측면에서는 아직 LLM 수준의 성과를 달성하지 못함
+공간적 구조 파악에 다른 모델보다 성능 떨어짐(객체위치, 레이아웃...): (1) SEED는 ViT의 2D feature를 Causal Q-Former를 통해 1D 시퀀스(예: 32개 토큰)로 변환하는데, 이 과정에서 이미지의 2차원 위치 정보(예: 위쪽, 왼쪽, 오른쪽 등 공간 배치)가 암묵적으로 시퀀스 순서에만 의존..
+(2) Cross-attention 기반 구조가 없음: Flamingo, BLIP-2 같은 모델은 Cross-Attention 구조를 통해 텍스트 쿼리가 특정 이미지 위치에 직접 attend할수 있는데..
