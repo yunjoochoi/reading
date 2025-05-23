@@ -1,0 +1,48 @@
+ViT(image embedding)
+AN IMAGE IS WORTH 16X16 WORDS: TRANSFORMERS FOR IMAGE RECOGNITION AT SCALE
+
+
+ABSTRACT
+컴퓨터 비전 분야에서 트랜스포머 논문을 성공적으로 적용.. 이전시도들은 어텐션과 CNN을 결합시킨 것밖에 없었다. 즉 CNN structure가 유지됨
+트랜스포머는 자연어처리 분야에서 새로운 패러다임으로 자리잡았는데 이걸로 이미지 처리도 성공적으로 바꿀수있지않을까?
+
+a pure transformer applied directly to sequences of image patches can perform very well on image classification tasks.
+
+
+
+1 INTRODUCTION
+트랜스포머는 연산 효율성과 확장성 덕분에 1000억 개 이상의 파라미터를 가진 모델도 학습 가능해졌고, 모델과 데이터 크기가 커짐에도 성능 향상은 아직 한계에 도달하지 않았다
+컴퓨터 비전에서는 여전히 합성곱 기반 아키텍처가 주류를 이루고 있다. NLP의 성공에 영향을 받아 CNN과 self-attention을 결합하거나, 아예 합성곱을 대체하려는 시도가 있었지만, 특수한 attention 패턴 때문에 대규모 하드웨어에서 효율적으로 확장되지 못하고 있다. 따라서 대규모 이미지 인식에서는 여전히 ResNet 계열의 전통적인 구조가 최고 성능을 유지하고 있다.
+# 이미지를 여러 패치로 나눈 뒤, 각 패치를 선형 임베딩하여 Transformer의 입력 시퀀스로 사용하며, 이는 NLP에서 토큰을 다루는 방식과 동일하다. 
+해당 모델은 이미지 분류 태스크에서 지도 학습 방식으로 학습.
+중간 규모의 데이터셋(예: ImageNet)에서 강한 정규화 없이 학습할 경우, Transformer 기반 모델은 비슷한 크기의 ResNet보다 몇 퍼센트 낮은 정확도를 보인다. 이는 Transformer가 CNN의 특성인 이동 등변성(translation equivariance)과 지역성(locality) 같은 귀납적 편향이 부족해, 데이터가 충분하지 않으면 일반화 성능이 떨어지기 때문이다.
+하지만 더 큰 규모의 데이터셋(1,400만~3억 장)에서 학습하면 결과가 달라진다. 대규모 학습은 CNN의 귀납적 편향보다 더 효과적이며, Vision Transformer(ViT)는 대규모 데이터로 사전 학습 후 소규모 데이터셋에 전이할 때 뛰어난 성능을 보인다. 공개된 ImageNet-21k나 사내 JFT-300M으로 사전 학습한 ViT는 여러 이미지 인식 벤치마크에서 기존 최고 성능을 능가하거나 근접하며, 예를 들어 ImageNet에서 88.55%, CIFAR-100에서 94.55%의 정확도를 기록했다.
+=> ViT는 대규모 데이터로 사전학습 후 소규모 데이터로 전이학습 시켰을때 이미지 인식 벤치마크에서 sota거나 근접
+
+
+Figure 1: 이미지를 고정 크기 패치로 나눈 후, 각 패치를 선형 임베딩하고 위치 임베딩을 더해 Transformer 인코더에 입력한다. 분류를 위해 학습 가능한 분류 토큰(classification token)을 시퀀스 앞에 추가
+
+
+
+3 METHOD
+3.1 VISION TRANSFORMER (VIT)
+이미지는 (H,W,C) 형태에서 (N,P2 ⋅C) 형태의 2D 패치 시퀀스로 변환되며, 각 패치는 평탄화(flatten)되어 학습가능한 linear projection을 통해 고정된 차원 D의 임베딩으로 매핑
+BERT의 [CLS] 토큰처럼, ViT는 학습 가능한 클래스 임베딩을 패치 시퀀스 앞에 추가한다. 이 클래스 토큰의 Transformer 최종 출력 벡터는 이미지 표현으로 사용되며, 분류를 위해 여기에 classification head가 연결된다. 사전학습 시에는 은닉층이 하나 있는 MLP, 파인튜닝 시에는 단일 선형층을 사용한다.
+위치 정보를 보존하기 위해, 패치 임베딩에 위치 임베딩을 더한다. standard learnable 1D position embeddings 사용. 2D-aware 위치 임베딩은 (행, 열 좌표 각각 임베딩 등) 이미지 구조를 더 반영하지만 실험 결과 별 효과가 없어 단순한 1D 방식 사용함
+
+
+CNN은 이미지에 유리한 구조적 편향이 내장되어 있음 Vision Transformer(ViT)는 CNN과 달리 이미지 구조에 특화된 귀납적 편향(inductive bias)이 거의 없기 때문에, 공간적 구조나 위치 정보를 스스로 학습해야 하며, 이로 인해 많은 데이터가 필요하다. (초기화된 위치 임베딩은 패치의 2D 위치 정보를 전혀 담고 있지 않으며, 패치 간의 모든 공간 관계는 학습을 통해 처음부터 배워야= 학습가능한 포지션 임베딩 사용한 이유)
+
+
+하이브리드 아키텍처:
+원시 이미지 패치를 사용하는 대신, CNN의 feature map을 활용하여 입력 시퀀스를 구성할 수도 있다. CNN이 갖는 로컬 구조, 위치 정보 등 inductive bias를 먼저 반영하고, CNN의 feature map을 Transformer 입력으로 사용하면, ViT 구조와 CNN의 장점을 결합한 하이브리드 모델이 된다.
+
+
+3.2 FINE-TUNING AND HIGHER RESOLUTION
+ViT는 대규모 데이터에서 사전 학습 후, 고해상도 입력으로 파인튜닝하면 성능이 향상될 수 있다. 이때, 패치 사이즈는 유지하므로 시퀀스 길이가 길어져서 생긴 위치 임베딩 문제를 해결하기 위해 사전학습된 위치 임베딩에 2D 보간을 사용하며, 이는 ViT에 수동으로 주입되는 유일한 2D 이미지 구조 편향
+
+
+5 CONCLUSION
+다른 비전 태스크로의 확장: 객체 탐지(detection), 분할(segmentation)
+자기지도 학습(Self-Supervised Learning)으로 확장 (대규모 감독 학습 대비 성능 격차가 큼)
+ViT를 더 크게 키우면 성능이 더 좋아질 가능성이 있음
