@@ -1,0 +1,21 @@
+Flamingo
+
+CLIP이 구조적으로 few shot learning 불가한 부분 개선
+perceiver와 cross attention
+
+ Fine Tuning 작업 없이, Few Shot Learning 방법을 사용하면 기존 모델들보다 성능이 좋으면서 범용적으로 사용 가능한 모델 개발이 가능함
+
+CLIP[1]은 Zero Shot Prediction을 잘 하는 모델이었는데요. 그 말은 엄밀히 말하면 CLIP[1]은 LMM이라기 보다는 Vision Model이라는 뜻이죠. 입력된 이미지의 Class를 구분할 수 있는 모델인데, 기존 Vision Model과 달리 Text를 활용할 수 있기에 Zero Shot Prediction이 가능한 모델,  Flamingo는 전혀 다릅니다. Vision Model 보다는 Language Model에 더 가깝
+지금까지 Image와 Text를 모두 입력으로 받아 그에 해당하는 Text를 출력할 수 있는 모델은 없었지만 플라밍고는 입력으로 Image, Text를 모두 받을 수 있고요, 그에 대해 가장 적절한 Text를 출력
+
+비전,이미지 인코더 프로즌, 출력 LLM 프로즌
+
+Perceiver
+입력으로 Image와 Text를 받아야->필연적으로 Image와 Text Feature의 차원을 동일하게 맞춰줘야(여기서 또 어텐션 사용해서 정보 압축함, DETR과 같은 방식 트랜스포머 사용)
+ DETR는 encoder에서 이미지 feature map을 입력받는 반면, Transformer는 문장에 대한 embedding을 입력받음
+positional encoding에서 차이-Transformer는 입력 embedding의 순서와 상관 없이 동일한 값을 출력하는 permutation invariant한 성질을 가졌기 때문에 positional encoding을 더해줌. DETR은 x, y axis가 있는 2D 크기의 feature map을 입력받기 때문에 기존의 positional encoding을 2D 차원으로 일반화시켜 spatial positional encoding.
+
+Cross Attention
+차원 맞춰진 이미지 피처와 텍스트 피처는 Cross Attention을 거쳐 정보를 융합 이후 피드포워드
+참고로 텍스트 피처가 Q, 이미지 피처는 K,V
+이후 프로즌 LLM이 결과 생성
