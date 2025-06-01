@@ -1,0 +1,23 @@
+이 [seq_len x 512] 벡터들을 "다시 토큰 아이디"로 바꾸려면,
+이 벡터가 원래 토큰 임베딩 공간에 존재해야 하지 않나?
+근데 Transformer는 context-aware representation이라 그 벡터가 토큰 임베딩이랑 일치하지 않을 수도 있지 않나?
+맞음
+보통 아래와 같은 방식으로 가장 가까운 토큰을 찾는다:
+
+방식: nearest neighbor (argmax)
+토큰 임베딩 테이블과 내적 → 가장 유사한 토큰 선택
+token_id = argmax(dot(output_vec, token_embedding_matrix.T))
+
+Decoder에서는? vocab 확률 분포를 만들기 위해 토큰 임베딩 weight를 transpose해서 softmax로 예측
+logits = transformer_output @ embedding_matrix.T
+시퀀스 전체를 한꺼번에 예측하는 구조
+transformer_output.shape == (seq_len, hidden_dim)       # 예: (128, 512)
+embedding_matrix.shape == (vocab_size, hidden_dim)       # 예: (30522, 512)
+
+logits = transformer_output @ embedding_matrix.T         # (128, 30522)
+
+정리
+디코더에서의 토큰 예측이든,
+인코더에서의 마스크 복원이든,
+결국은 어떤 토큰 벡터가 가장 유사한가?를 묻는 문제고,
+그 유사도는 사실상 cosine similarity처럼 작동하는 dot product로 계산
