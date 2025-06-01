@@ -1,0 +1,71 @@
+BLOCK DIFFUSION
+
+기존 AR 언어 모델의 주요 한계
+AR 모델은 토큰을 한 개씩 순차적으로 생성- 병렬 생성이 불가능하고, 긴 문장을 생성할수록 속도가 느림.
+디퓨전은 노이즈와 스케줄링을 조절함으로써 더 강력한 제어가 가능
+
+이산 디퓨전 모델 한계
+Discrete diffusion models currently face at least three limitations. First, in applications such as chat
+systems, models must generate output sequences of arbitrary length (e.g., a response to a user’s
+question). However, most recent diffusion architectures only generate fixed-length vectors
+=>기본 구조가 이미지 기반에서 출발, 원래의 설계가 이미지처럼 정해진 크기의 데이터를 처리하도록 되어 있기 때문
+U-Net이 입력 256x256에 대해서만 훈련되었다면, 생성 시에도 그 크기만.
+따라서 텍스트 전체를 n개의 벡터로 "패딩"하거나 "truncate"해서 고정 길이로 만들어야 디퓨전 프로세스를 적용할 수 있다
+디퓨전은 병렬 복원이지만, 텍스트는 순차 의존성이 강함
+
+Second, discrete diffusion uses bidirectional context during generation
+and therefore cannot reuse previous computations with KV caching, which makes inference less
+efficient
+=>GPT 같은 오토리그레시브 모델은 토큰을 하나씩 생성하면서 이전 연산 결과(KV 캐시)를 저장하고 재사용함
+ 그런데 디퓨전 모델은 전체 시퀀스를 한꺼번에 복원하기 때문에, 이전 토큰의 계산값을 재사용할 수 없고 디퓨전은 인퍼런스가 비효율적
+
+GPT는 글을 한 줄씩 써가면서, 지금까지 쓴 내용을 참고해 다음 단어를 씀 → 메모를 하며 진행하니 빠름
+디퓨전은 전체 문장을 흐림 상태에서 반복적으로 정제하면서 양쪽 문맥을 다 씀 → 매번 처음부터 다 계산하느라 느림
+
+
+Third, the quality of discrete diffusion models, as measured by standard
+metrics such as perplexity, lags behind autoregressive approaches=>그냥 성능이 AR보다 낮음
+
+이산 디퓨전은 다단계 노이즈 → 순차적 복원 학습 
+BERT의 단일 예측(분류 문제)과는 전혀 다른 Markov Chain 모델링
+================================
+ex. x₀: "I love eating pizza"
+
+x₁: "I [MASK] eating pizza"
+
+x₂: "[MASK] [MASK] [MASK] pizza"
+
+학습: x₂ → x₁, x₁ → x₀
+===============================
+
+왜 디퓨전 모델은 objective에 대해 gradient variance가 높은가?
+디퓨전 모델에서 기울기 분산이 높은 이유는
+학습 과정에서 t, ε의 랜덤성으로 인해 입력 난이도가 시간마다 크게 달라지고,
+특정 t에서 loss가 너무 작거나 너무 noisy하기 때문에,
+전체적으로 불안정하고 분산이 큰 gradient가 발생하는 구조라서
+
+==============================
+
+토큰 블록 기반으로 자기회귀적인 block discrete diffusion language model 제안
+ar모델은 L토큰 생성에 L step이 필요하다는 단점이 있음: Autoregressive (AR) 모델은 전체 시퀀스의 확률을
+토큰 단위 조건부 확률의 곱 (또는 로그 합) 으로 모델링. 출력이 곧 확률 분포이며, softmax(logits) = 직접적인 토큰 분포 즉시 샘플링 가능
+* 샘플링: 학습된 모델이 예측한 확률 분포로부터 실제 토큰을 "하나 선택"하는 과정
+디퓨전 모델: 직접 확률 분포를 내뱉지 않음 확률 분포는 학습된 네트워크가 직접 낸 게 아니라, diffusion reverse step을 통해 복원하고, 반복적 샘플링 필요하다.
+
+=================================
+
+ Autoregressive (AR) 모델과 Discrete Diffusion 모델 사이에서 양쪽의 장점을 섞으려는 시도
+블록 단위 오토리그레시브 확률 분포를 정의하고, 각 블록 내에서는 디퓨전으로 복원하는 하이브리드 구조를 제안
+구성 요소	설명
+Autoregressive over blocks	전체 시퀀스를 블록(예: 5토큰씩)으로 나눈 뒤, 블록 단위로 순차적 생성
+Diffusion within each block	각 블록 내부의 토큰은 디퓨전 방식으로 병렬 복원
+BD3-LM은 문장을 문단 → 문장 → 단어 식으로 쓰는 것과 비슷
+==================================
+
+bolck diffusion과 같은 Discrete Diffusion 방식의 주요 장점
+병렬 생성 가능
+마스킹 기반이기 때문에 일부 토큰만 마스크하고 재생성(오류전파막음) 이건 AR 모델로는 매우 어려움 (중간 삽입 = 모든 후속 토큰 재계산 필요).
+다양성 있는 생성 (sampling 과정이 stochastic/ AR은 한 경로)
+AR의 구조적 제약을 회피할 수 있음. 항상 좌→우 순서에 따라야 하는 제한 없음. 필요한 경우 양방향 context를 동시에 활용 가능
+멀티모달과의 융합이 쉬움( VQ-Diffusion, UniDiffuser 등에서 multimodal generation에 강력한 성능)
+세밀한 제어 가능(노이즈 수준, 위치, 스케줄 등을 직접 설계해 출력 스타일 제어 가능. 예: 긴 문장을 단순하게 말하게 하거나, 특정 스타일 유지하게 만들기.)
