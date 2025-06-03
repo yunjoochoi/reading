@@ -1,0 +1,38 @@
+gan은 높은 품질의 이미지를 샘플링 가능하지만 최적화에 한계가 있고, 전체 데이터 분포를 잡아내는데 어려움이 있다. 
+반대로 가능도 기반 방법론들은 밀도 추정이 더 잘되어 최적화가 가능하다. vae경우, 고해상도 이미지 합성이 가능하지만 샘플 품질은 gan과 동등하지는 않다. 
+arm도 밀도 추정이 가능하지만 계산적인 부분에서 비효율. 순차적 생성은 저해상도에 머무르게 함
+*density estimation은 확률분포 추정
+이미지의 픽셀 기반 표현은 거의 감지할 수 없는 고주파 세부 정보 [16, 73]를 포함하기 때문에 최대 가능도 훈련(maximum-likelihood training)은 이를 모델링하는 데 불균형적으로 많은 용량(capacity)을 소비하게 되어 긴 훈련 시간'
+
+
+Autoregressive 모델은 maximum-likelihood 방식으로 학습합니다.
+즉, 각 픽셀값이 나올 확률을 최대화하는 방향으로 학습됩니다.픽셀 단위로 학습하다 보니, 사람 눈에는 거의 안 보이는 고주파 정보(예: 미세한 노이즈)도 확률적으로 맞춰야 함.
+
+결과적으로 모델이 중요하지 않은 세부사항까지 과하게 학습하게 되고, 학습이 오래 걸림.
+더 높은 해상도로 확장하기 위해, 여러 2단계 접근 방식 [23, 67, 101, 103]은 원본 픽셀(raw pixels) 대신 압축된 잠재 이미지 공간을 모델링하기 위해 ARM을 사용
+
+DM의 경우 기본 신경망 백본(neural backbone)이 UNet [15, 30, 71, 85]으로 구현될 때 이미지와 유사한 데이터(image-like data)의 귀납적 편향(inductive biases)과 자연스럽게 부합.그러나 픽셀 공간에서 이러한 모델을 평가하고 최적화하는 것은 낮은 추론 속도와 매우 높은 훈련 비용이라는 단점. 우리는 제안하는 LDM(잠재 확산 모델)으로 이러한 두 가지 단점을 모두 해결하며, LDM은 더 낮은 차원의 압축된 잠재 공간에서 작동합니다. 이는 훈련의 계산 비용을 낮추고 합성 품질의 거의 저하 없이 추론 속도를 높입니다
+
+Two-Stage Image Synthesis
+수십억 개의 훈련 가능한 파라미터를 도입하는 [23, 66] 실현 가능한 ARM 훈련에 필요한 높은 압축률은 이러한 접근 방식의 전반적인 성능을 제한하며, 압축률이 낮을수록 높은 계산 비용이라는 대가가 따릅니다 [23, 66]. 우리 연구는 이러한 절충(trade-offs)을 방지합니다. 제안하는 LDM은 컨볼루션 백본(convolutional backbone) 덕분에 더 높은 차원의 잠재 공간으로 더 완만하게 확장되기 때문
+
+3 method
+ introducing an explicit separation of the compressive from the generative learning phase. To achieve this, we utilize
+an autoencoding model which learns a space that is perceptually equivalent to the image space, but offers significantly
+reduced computational complexity.
+일반적으로 VQ 모델에서는 양자화(quantization) 가 인코더와 디코더 사이에 따로 위치 이 논문에선 양자화 결과가 디코더 내부로 통합되어 구조적으로 드러나지 않는다
+
+유넷이 현재 latent가 어느 정도 노이즈가 섞였는지를 정확히 예측하도록 오브젝트 함수를 정의
+
+다른 생성형모델과 같이 디퓨전도 조건부 생성이 가능하다. 근데 아직까지 탐색이 덜된 분야임
+We turn DMs into more flexible conditional image generators by augmenting their underlying UNet backbone with the cross-attention mechanism
+
+
+노이즈시키는 과정은 디퓨전과 동일. 유넷으로 디코딩시킬때 변화 생김. 기존 유넷 디코딩 과정에 크로스 어켄션한 latent로 디코딩해서 언어 의미적인 디코딩이 가능하게 함
+✔️ UNet은 diffusion에서 노이즈를 제거하는 역할을 수행하고,
+✔️ 여기에 텍스트 latent(=언어 의미) 를 cross-attention을 통해 UNet의 중간 단계에 삽입함으로써
+✔️ 텍스트 조건에 맞는 의미 기반의 이미지 복원(디코딩)이 가능
+
+한계
+LDM은 픽셀 기반의 방식에 비해 계산 요구량을 크게 줄이지만 샘플링은 여전히 GAN보다 느리다. 또한 높은 정밀도가 필요할 때 LDM을 사용하는 것은 의문의 여지.
+
