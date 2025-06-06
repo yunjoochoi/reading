@@ -4,7 +4,7 @@ DDPM기반인데
 1. latent space에서 학습(생이미지를 먼저 vae로 압축시 한번 사용하고, 디퓨전으로 복원한 latent를 이미지로 복원할때 한번 사용)
 2. 유넷중간에 크로스어텐션 넣어서 텍스트 컨디셔닝 가능하게 함
 3. classifier free guidance: 조건 있는 샘플링과 조건 없는 샘플링(ddpm처럼 전제학습 이미지 분포에서 하나 뽑게 하는거) 혼합해서 텍스트 조건 더 강하게 반영
-
+Classifier-Free Diffusion Guidance (Ho et al., 2021): shows that you don't need a classifier for guiding a diffusion model by jointly training a conditional and an unconditional diffusion model with a single neural network
 그리고 원래 ddpm에서 있었던 self어텐션이 사라진건 아니고, 크로스어텐션도 있고 셀프어텐션도 공존한다.
 
 
