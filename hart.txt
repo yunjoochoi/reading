@@ -1,0 +1,50 @@
+hart논문 
+현재 LLM의 이미지 재구성은 poor - 이산적 토크나이저 퀄러티 때문이다.
+이러한 문제를 해결하기 위해 하이브리드 토크나이저를 제안한다. 
+=오토인코더에서 나온 연속 latent를 2개의 부분으로 나눈다
+1. 이산 부분: scalable-resolution discrete AR model,
+2. 연속 부분은:  lightweight residual diffusion module with only 37M parameters.
+discrete-only VAR tokenizer에 비해서 이러한 하이브리드 어프로치는 재구성 FID를 크게 낮추며 향상시켯다.
+
+
+INTRO
+convert images from pixel space into discrete visual tokens through vector quantization (VQ)시도
+이후 언어 토큰과 같은 방식으로 처리된다
+성공적이었던 LLM 기술에 더불어 AR 비주얼 제너레이션은 효과적임을 보였음
+동시에 디퓨전 모델들도 이미지 생성의 중심에 있다 - 생성 품질 자체는 AR보다 뛰어남 다만 실제 사용 시 계산량(연산 복잡도)이 큰 문제
+근데 2024년도의 다른 논문에 따르면 비슷한 이미지를 병렬가능한 ar모델을 사용해 생성하는데는 1/8정도의 연산량만 필요.
+
+ar모델과 비슷한 속도(연산량)이면서 디퓨전 모델과 비슷한 품질을 만들어내는 ar모델 없나?
+디퓨전에 비해 ar모델이 뒤떨어지는점
+1. 이산 토크나이저는 재구성시 큰 손실 동시에, ar모델은 낮은 생성 상한선을 가지고 세밀한 이미지 디테일을 모델링하는데 한계
+2. 디퓨전 모델은 고화질이미지 생성에 뛰어남- 하지만 현존하는 ar모델 중 바로, 효율적으로 1024이미지 생성해내는 모델 없음
+
+이문제를 해결하기 위해 Hybrid Autoregressive Transformer 제안
+=The discrete tokens captures the big picture, while continuous residual tokens focus on fine details (Figure 3). 
+These two latents are then modeled by our hybrid transformer: the discrete latents
+are handled by a scalable-resolution VAR transformer, while the continuous latents are predicted by
+a lightweight residual diffusion module with 5% parameter and 10% runtime overhead.
+
+
+METHOD
+The primary goal of hybrid tokenization is to enable the decoding of continuous features during generation
+=디코딩때 연속적인 피쳐로서 디코딩해서 생성품질 높인다. (LLM생성 아키텍쳐는 유지하며 VQ 코드북으로 인해 발생하는 생성 성능의 상한선(generation upper bound)이 낮은 문제를 극복)
+concatenates text tokens with visual tokens during training, 각 이미지 토큰이 전체 텍스트 내용을 충분히 이해하고 반영할 수 있게
+attention 연결
+
+
+잔차임베딩벡터=실제continuous벡터-Quantized token(코드북상에 매칭된 연속벡터)
+이 잔차임베딩벡터를 residual diffusion으로 모델링한다.
+
+(0) LLM을 통해 text tokens 생성
+(1) Scalable-Resolution Autoregressive Transformer
+입력: text tokens
+출력: Discrete image tokens
+
+(2)Residual Diffusion: MLP 기반 디퓨전 모듈 (작고 빠름), 잔차 벡터만 학습
+입력: 노이즈 , 위에서 나온 discrete token들의 합 또는 히든 상태
+출력: Residual tokens (초록색 박스)
+일반 디퓨전보다 훨씬 빠르다: 복원해야 하는 정보량이 훨씬 적고, 구조적으로도 단순(유넷아니고, 그냥 작은 신경망)=스텝 수 적음
+
+(3) Final Continuous Tokens:
+=Discrete + Residual을 더해서 continuous image tokens 복원
