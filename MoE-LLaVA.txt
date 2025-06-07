@@ -1,0 +1,58 @@
+기존의 대형 Vision-Language 모델(LVLMs)은 좋은 성능을 보였지만, **모든 토큰에 대해 모든 파라미터를 사용하는 구조(=dense model)**라서 계산량이 매우 많고 비효율적
+자연어 처리(NLP)에서는 MoE(Mixture of Experts, 전문가 혼합 모델) 구조를 사용해 일부 파라미터만 활성화하는 방식으로 계산 비용을 줄이는 방법이 많이 연구
+
+하지만 이를 멀티모달 모델(이미지+텍스트 모델)에 바로 적용하면 성능이 크게 떨어지는 문제가 생김
+MoE구조를 멀티모달모델에 효과적으로 적용하는 방법 탐구
+uniquely activates only the top-k experts through routers during deployment
+e significant performance of MoE-LLaVA in a variety of visual understanding and object hallucination benchmarks
+with only approximately 3B sparsely activated parameters, 다른 무거운 모델보다 나은 성능
+
+<방법론>
+Hard Router (하드 라우터)
+각 전문가(Expert)는 고정된 역할을 갖고, 미리 정의된 패턴대로 동작함.
+예: 특정 전문가는 이미지 전용, 또 다른 전문가는 텍스트 전용.
+라우터 학습이 필요 없음 → 구조가 단순.
+주로 모달리티(이미지/텍스트)나 특정 태스크에 따라 전문가를 나누는 경우에 사용됨.
+장점: 구현이 쉽고 명확함
+단점: 유연성이 부족함, 모달 간 상호작용이 어려움.
+
+Soft Router (소프트 라우터)
+라우터가 학습을 통해 각 토큰을 어떤 전문가에게 보낼지 동적으로 결정.
+다양한 전문가가 각자 잘하는 데이터를 더 잘 처리하게 됨 → 효율성과 희소성(sparsity) 달성.
+NLP에서 MoE에 주로 쓰임. 멀티모달에서도 EVE, LIMoE 같은 작은 모델들에서 시도됨.
+MoE-LLaVA는 이 Soft Router 방식을 채택하여 더 유연하게 전문가 분산을 학습
+
+
+전체 구조
+Vision Encoder (이미지 인코더): CLIP 기반으로 이미지를 토큰 시퀀스로 변환
+MLP Layer: 이미지 토큰을 텍스트와 동일한 차원으로 투영
+LLM (대형 언어모델): 텍스트와 이미지 토큰을 함께 처리
+MoE Layer: FFN 대신 다수의 전문가 중 일부만 선택적으로 활성화
+
+
+<MoE-Tuning: 3스테이지>
+1. 시각입력: 이미지를 언어모델(LLM)이 이해할 수 있게 변환
+이미지 → 패치(patch) → 토큰 시퀀스
+이 이미지 토큰들을 MLP를 통해 LLM의 입력 차원으로 투영해서 텍스트처럼 취급
+LLM이 이미지를 보고 문장을 생성하게 학습
+
+2. 멀티모달 사전학습
+다양한 지시문 기반 데이터로 학습해서 LLM이 본격적으로 멀티모달(이미지+텍스트) 문제를 이해할 수 있도록 학습
+이 단계에서 학습된 모델의 파라미터(특히 FFN)를 다음 단계의 초기값으로 사용
+
+3. MoE
+Stage II에서 학습된 FFN을 여러 개 복사하여 각 전문가(Expert)로 초기화
+라우터가 각 토큰을 어떤 전문가에 보낼지 softmax로 결정
+확률이 높은 Top-k 전문가만 활성화, 나머지는 비활성화
+각 활성화된 전문가의 출력을 확률 기반 가중합(라우터의 softmax 출력값)하여 최종 출력 생성
+
+<학습 목표>
+LLM의 Auto-Regressive Loss 뿐만 아니라, 모든 전문가들이 고르게 선택되도록 보조 손실을 도입
+
+
+POPE 벤치마크(Object Hallucination 테스트)에서 MoE-LLaVA가 LLaVA-13B보다 1.1% 더 높은 점수
+
+
+출력층(FFN)을 여러 개 복사하는게 비효율적이긴 한데 이걸 
+한 토큰당 Top-k 전문가만 쓰니 병렬화와 속도 향상(계산 효율적)
+특화된 방향으로 나눠학습하니까 가중치 적게써도 응답이 잘됨
