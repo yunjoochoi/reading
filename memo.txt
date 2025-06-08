@@ -1,0 +1,17 @@
+LLaVA가 왜 Late Fusion인가?
+LLaMA는 이미지 토큰을 직접 처리하지 않음 Vision Encoder는 CLIP처럼 따로 있다.
+이미지와 텍스트가 transformer 안에서 긴밀하게 상호작용하진 않음 (cross-attention 없음)
+이미지 임베딩은 fixed prefix 역할만 함(그냥 기존 LLM의 프리픽스 방식처럼..컨텍스트 프롬프트, LLM은 이게 이미진지 잘 모름)
+
+Early Fusion에서는
+이미지와 텍스트를 같은 시퀀스로 통합해서 transformer 모델에 처음부터 함께 넣음
+transformer가 이미지/텍스트를 구분 없이 cross-attend 하며 처리(트랜스포머 내부적으로 원래 그러니까)
+LLM이 이건 이미지 토큰이고 이건 텍스트구나를 아예 내부 attention으로 학습= interaction 강도 가 강함
+
+
+<Instruction tuning>
+pretrained LLM을 instruction-formatted dataset으로 finetuning 하는 기술을 말한다. 이러한 방법을 통해 LLM은 unseed tasks들에 대해서도 새 instruction으로 일반화 해 0 shot에서의 성능을 향상
+
+supervised finetuning: 많은 task-specific data로 task-specific model을 학습
+prompting: prompt engineering으로 특정한 task에 대해 잘 수행하도록 한다.
+instruction tuning: 특정 task에 fit하도록 학습시키기 보다는, unseen tasks에 대해 어떻게 일반화하는 지를 학습한다. multi-task prompting과 더 연관있다고 할 수 있다.
