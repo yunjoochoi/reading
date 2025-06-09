@@ -1,0 +1,56 @@
+VAR
+
+사람은 일반적으로 이미지를 계층적(hierarchical) 방식으로 인식하거나 생성합니다 — 먼저 전체적인 구조를 파악하고, 그 다음에 세부적인 요소들을 채워 넣는다( 근데 생각->글 표현도 그렇지 않나? 큰 개념적 요소 생각하고 문법이나 세부요소 문장으로 만드는거)
+VAR는 GPT-2 스타일의 Transformer 아키텍처 [[66]]를 그대로 활용, ImageNet 256×256 벤치마크에서 VAR는 기존 AR 베이스라인보다 성능이 크게 향상
+추론 속도는 기존 대비 20배 더 빠르다
+Stable Diffusion 3.0이나 SORA [[29, 14]]와 같은 최신 디퓨전 시스템의 기반이 되는 **Diffusion Transformer(DiT)**를 다음 측면에서 뛰어넘었다는 것입니다:
+FID / IS (이미지 품질),데이터 효율성,추론 속도,확장성(scalability)
+
+기여
+1. 멀티스케일 오토리그레시브 패러다임과 다음 스케일 예측(next-scale prediction)을 활용한 새로운 시각 생성 프레임워크를 제안
+2. VAR 모델의 스케일링 법칙과 제로샷 일반화 능력을 실험적으로 검증함. 이는 LLM이 가진 특성을 시각 모델로 확장하는 첫 시도
+3. 이미지 합성(image synthesis) 분야에서, GPT 방식의 오토리그레시브 모델이 강력한 디퓨전 모델들을 처음으로 능가하는 성능을 달성
+4. 오픈소스 코드 전반 제공
+
+
+<METHOD>
+이전 코드북 방식의 한계
+1) 수학적 전제 위반 (Mathematical premise violation)
+VQVAE 같은 양자화 오토인코더에서는, 인코더가 생성한 특징 맵f 들이 서로 강하게 의존하는 구조(latent생성시 cnn같은거 써서)
+그러나 이를 양자화하고 플래튼하여 시퀀스로 만들면, 토큰 간에는 양방향(bidirectional) 상관관계가 여전히 존재
+=>순서대로 예측하는 모델인데, 실제 데이터는 순서를 무시하고 양방향 정보가 섞여 있음..
+
+2) 일부 제로샷 일반화 능력의 결핍 (Inability to perform some zero-shot generalization)
+이미지 AR 모델의 단방향 예측 특성은 양방향 추론이 필요한 작업에서 일반화 능력을 제한
+예) 이미지 하단만 주어졌을때, 상단을 생성해야 하는 경우 문제 발생
+
+3) 구조적 특성 손상 (Structural degradation)
+이미지 특징 맵은 본래 공간적인 지역성(spatial locality)가짐-1D 시퀀스로 펼치게 되면 토큰들이 공간적으로 멀어짐
+
+4) 비효율성 (Inefficiency)
+Self-Attention 기반 Transformer를 사용해 이미지 토큰 시퀀스 생성시 
+
+
+3.2 Visual autoregressive modeling via next-scale prediction
+VAR은 두 개의 분리된 학습 단계를 포함
+Stage 1:
+다중 스케일 VQ 오토인코더가 이미지를 K개의 토큰 맵 으로 인코딩합니다.
+이 과정은 복합 손실 함수로 학습됩니다.
+
+자세한 구현은 Algorithm 1, 2 ("Multi-scale quantization", "Embedding") 참고.
+이미지 im
+   ↓ 인코딩 E(im)
+특징맵 f
+   ↓ 반복 K번
+interpolate → 양자화 Q → rₖ
+   ↓
+code lookup → 업샘플 → residual 제거
+   ↓
+최종적으로 multi-scale tokens R 반환
+
+Stage 2:
+VAR Transformer는 다음 스케일 예측(next-scale prediction) 방식(식 6)을 통해 학습
+다음 토큰 예특이 아니라 다음 스케일 예측. 이전 스케일을 조건으로 보고 다음 스케일 예측
+2D 구조 그대로 유지한 채 예측하므로, spatial correlation 보존 가능. 같은 스케일 내부 토큰은 동시에 생성 가능
+이때 어텐션 마스크를 적용하여 각 까지만 볼 수 있게 제한합니다.
+표준 cross-entropy loss로 학습
