@@ -1,0 +1,31 @@
+대조 학습(Contrastive learning) 방법들은 원시 픽셀(raw pixel)을 하이퍼스피어 공간(hypersphere space)에 위치한 특징(feature)으로 매핑하는 일반적인 특징 함수(feature function)를 학습하는 것을 목표로 한다. 이러한 방법들은 동일한 인스턴스의 서로 다른 뷰(view)에 대해 불변한 표현(representation)을 학습하고자 하며, 이를 위해 긍정 쌍(positive pairs)은 서로 끌어당기고, 부정 쌍(negative pairs)은 멀어지도록 학습
+
+
+ the unsupervised contrastive models can learn some extents of semantic structures. 
+
+대조 학습(contrastive learning)에서 자주 쓰이는 손실 함수는 소프트맥스 기반이며, 온도 파라미터(τ)는 양성과 음성 샘플 간의 구분을 도와줍니다. 이 논문은 온도를 매개로 contrastive loss의 특성을 분석하는데, 그 결과 이 손실 함수는 어려운 음성 샘플(hard negative)에 더 집중적으로 패널티를 부여하는 성질(hardness-aware)을 가지고 있다는 것을 발견합니다.
+
+온도가 낮을수록 가장 구분하기 어려운 음성 샘플에 강한 패널티를 주며, 이는 각 샘플 간 구조를 더 잘 분리시키고 임베딩 공간의 분포를 균일하게(비슷한 강아지 이미지끼리도 멀어지게) 만듭니다. 반면, 온도가 높아지면 이 특성이 사라지고, 모든 음성 샘플에 비슷한 수준으로 작용
+
+너무 낮은 온도(temperature ↓) → uniformity ↑, semantic 관계 ↓
+(1) Hardness-aware 성질
+(2) Gradient 균형 구조
+
+하드니스 어웨어 속성
+대조 손살은 양의 쌍은 가깝고, 음의 쌍은 멀게- the positive alignment and negative separation
+the softmax-based contrastive loss is a hardnessaware loss function which automatically concentrates on
+separating more informative negative samples to make the embedding distribution more uniform
+
+We believe the uniformity-tolerance dilemma can be addressed by
+explicitly modeling the relation between different instances.
+=>의미적으로 유사한 인스턴스는 서로 가깝게 유지"
+"의미적으로 다른 인스턴스는 멀어져야 해"
+라는 관계 정보를 학습에 포함시키는 방식
+
+uniformity-tolerance dilemma
+① 임베딩을 균일하게 퍼뜨리는 것 (uniformity) vs
+② 의미적으로 비슷한 샘플은 가깝게 유지하려는 것 (tolerance)
+
+=>논문에서 주장한 신 loss는 Explicit Hard Negative Sampling로, 네거티브 샘플 중 유사도가 어느 정도보다 높은 쌍들만 반영함
+hard negative만 써서 필요한 곳만 균일화, easy negative는 무시되므로 의미론적으로 비슷한 샘플 간 거리 유지.
+Hard negative sampling을 통해 임베딩 분포의 uniformity를 높이면서도, semantic 구조는 잃지 않을 수 있다
