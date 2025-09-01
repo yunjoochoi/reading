@@ -1,0 +1,16 @@
+EFFICIENT STREAMING LANGUAGE MODELS WITH ATTENTION SINKS
+기존 문제점
+1. 이전 토큰 KV 저장해야 하는데 매우 메모리 비효율적
+2. 트레이닝시보다 더 긴 텍스트에는 일반화 못함
+- 윈도우 어텐션 사용 텍스트 길이가 캐시 넘어가면 fail
+
+attention sink, that keeping the KV of initial tokens will largely recover the performance of window attention.
+초반 KV남겨놓는 게 윈도우 어텐션 성능을 크게 회복시킴
+이유: the strong attention scores towards initial tokens as a “sink” even if they are not semantically important.
+StreamingLLM: enables LLMs trained with a finite length attention window to generalize to infinite sequence length without any fine-tuning
+llm을 유한 어텐션 윈도우로 학습시키는데 무한 길이에 (파인튠없이)일반화될수 있는 모델
+
+Window attention은 효율적이지만 초기 정보 손실 시 성능 붕괴. Re-computation 방식은 느림
+초기 토큰에 Attention 스코어 집중되는 현상 - autoregressive 구조상 초기 토큰이 모든 후속 토큰에 가시적이기 때문
+Attention Sink Token 유지: sliding window 방식과 함께, 초기 몇 개의 토큰(KV)을 캐시에 항상 유지합니다. 실험에서는 4개 초기 토큰만으로도 충분, 슬라이딩 윈도우 재계산 방식(sliding window with recomputation - 앞에서 버려진 토큰이 필요해지면 앞에서부터 다시 계산에서 캐시에 복원하는 방법)보다 최대 22.2배 빠른 처리 속도
+=> 이를 개선하여 사전 학습 시 learnable placeholder sink token 1개를 모든 입력 앞에 삽입하여 학습시키면, 스트리밍 시에는 그 토큰 하나만 유지해도 안정적인 성능 확보 가능
