@@ -1,0 +1,31 @@
+
+
+LLM in a flash: Efficient Large Language Model Inference with Limited Memory
+초록
+LLM은 많은 작업을 수행하지만 컴퓨팅, 메모리 요구가 크다. 특히  devices with limited DRAM(Dynamic RAM, 동적 RAM, RAM의 한 종류, 구조가 단순하고 집적도가 높음 → 저렴하고 용량이 큼., 현재 우리가 PC, 노트북에 쓰는 메인 메모리는 대부분 DRAM) capacity
+
+방법
+flash mem에서 퍼올리는 데이터 양 줄이기 + 퍼올리는 데이터 청크 크게
+
+1. windowing은 전략전으로 데이터 전송 줄임(이전 activated 뉴런 재사용)
+2. row-column bundling: 플래시에서 퍼올리는 데이터 청크 늘림
+
+Our integration of 
+sparsity awareness, 
+context-adaptive loading, and
+a hardware-oriented design -> paves the way for effective inference of LLMs
+
+
+
+personal device(스마트폰..)에서 돌리기 힘든 문제
+모델 전체를  DRAM에 오리려는 시도 계속되는중 -> 모델 사이즈 제한
+모델 사이즈 줄이기 위해 quantization 등 있지만 여전히 전체 모델 올리기는 어렵
+그래서 the model parameters 를 flash memory에 저장하는걸 제안.
+인퍼런스 중에 서브셋 파라미터를 로딩함
+
+hardware characteristics
+(i) 필요한 데이터 전송량을 줄이고, (ii) 전송 처리량을 증가시키고, (iii) DRAM에 로드된 매개변수를 효율적으로 관리
+비용 모델을 최적화하고 필요에 따라 매개변수를 선택적으로 로드하는 제안된 기술을 통해
+기기의 DRAM 용량보다 2배 더 큰 모델을 실행하고, 최대 4배, 7배, 20배까지 추론 속도를 높임
+
+제안된 해결책: LM의 Activation Sparsity 활용해서 모든 파라미터 불러오는게 아니라 선택적으로 필요한 가중치만 
