@@ -1,0 +1,120 @@
+A survey on multimodal large language models
+
+LLM: blind
+LVM: lag in reasoning
+MLLM: the newfield of the multimodal large language model, optical character recognition–(OCR) free math reasoning 가능
+
+(i) The MLLM is based on an LLM with billionscale parameters
+(ii) The MLLM uses new training paradigms to unleash its full potential, such as using multimodal
+instruction tuning 
+
+
+(i) What aspects can be further improved or extended? 
+
+(ii) How can we relieve the multimodal hallucination issue?
+
+Multimodal in-context learning(few-shot performance) -
+multimodal chain of thought(complex reasoning tasks) -Monkey
+
+projection-based, 
+query-based and 
+fusion based connectors. The former two types adopt token-level fusion, processing features
+into tokens to be sent along with text tokens, while the last type enables a feature-level
+fusion inside the LLM.
+
+token-level fusion: 인코딩된 이미지+ 텍스트 concat되어 LLM에 들어감 
+=learnable query token, 
+
+MLP-based interface
+
+feature-level fusion
+
+
+Cross-attention 방식 = 고해상도 특징을 저해상도 흐름에 섞어 넣기
+Patch-division 방식 = 고해상도를 조각내서 저해상도 네트워크에 재사용하기
+Monkey / SPHINX 방식= 위 두개 퓨전
+
+큰 이미지를 직접 encoder에 넣으면 연산량이 너무 크니까 → **작은 조각(sub-image)**으로 쪼갬.
+
+동시에, 원본 이미지를 **축소(downsample)**해서 전체 맥락을 담은 저해상도 이미지를 encoder에 같이 입력.
+
+이렇게 하면:
+
+잘린 조각들(sub-images) → 세부(local) 디테일 확보
+
+축소된 전체 이미지 → 전체(global) 구조/맥락 확보
+
+, parameter size and training data composition 이 매우 중요했음 
+scaling up the parameter size of LLMs 은 increasing input resolution과 비슷한 효과
+
+7B to 13B brings comprehensive
+improvement on various benchmarks. Furthermore,
+when using a 34B LLM, the model shows emergent
+zero-shot Chinese capability, given that only English
+multimodal data are used during training.
+
+MoE: the sparse architecture enables scaling up the total parameter size without increasing the computational cost, by selective activation of the parameters.
+
+어떤 어댑터 구조를 쓰냐보다는 “비주얼 토큰 개수”와 “입력 해상도”가 성능에 더 중요하다
+
+A full-fledged MLLM undergoes three stages of training: 
+pre-training: aims to align different modalities and learn multimodal world knowledge.
+이미지, 텍스트 페어 데이터
+learnable interface만 보통 학습시킴
+
+
+instruction tuning 
+teach models to better understand the instructions from users ->generalize to unseen tasks(boosting zero-shot performance)
+VQA task같은 데이터로 학습:  instruction, the multimodal input and the ground-truth response
+
+
+alignment tuning
+models need to be aligned with specific human preferences, e.g. response with fewer hallucinations
+RLHF, DPO(This technique learns from human
+preference labels, utilizing a simple binary classification loss)
+이런 데이터셋 구하는건 이전 스테이지보다 훨씬 힘들고 수도 적음. LLaVA-RLHF같은 데이터셋 존재
+
+Granularity support
+모델 입력은 점점 더 세분화된 조작(granularity) 을 지원
+Shikra: 자연어로 영역(bounding box)을 지정하여 지역 단위 제어
+Osprey: 사전학습된 세그멘테이션 모델을 활용해 단일 점 입력만으로 특정 객체나 일부 영역을 지정 가능
+
+Modality support
+단일언어 중심으로 학습시키고 단계별로 외국어까지 학습시킴= 바이링구얼로 진화 등등
+
+Scenario/task extension
+GUI 상호작용을 위한 CogAgent, AppAgent, Mobile-Agent → 사용자가 앱/GUI와 자연스럽게 상호작용 가능.
+Embodied agents → 실제 환경에서 추론·탐색·조작을 수행, 사람 대신 자동으로 작업을 실행할 수 있는 능력 제공.
+이들은 주어진 과제를 여러 단계로 계획하고 실행하는 데 강점
+
+
+Mitigation methods
+Pre-correction: 네거티브 이미지나 휴먼 프리퍼런스로 파인튜닝해서 할루시네이션 줄임
+In-process correction:  인퍼런스 중 완화, 추론 중에 “상상력(imagination) 정도”를 연속적인 제어 변수로 두어, 모델 출력의 환각 수준을 조절
+Post-correctio:  post-remedy way 사후(post) 단계에서 환각을 교정, 전문가 모델(expert models)을 끌어와서 원 모델의 응답을 보완
+
+M-ICL
+Improvement on ICL capabilities
+
+CHALLENGES AND FUTURE DIRECTIONS
+장문 멀티모달 처리 부족: 긴 비디오, 이미지-텍스트가 섞인 긴 문서 이해에 제약
+복잡한 지시문 처리 미흡: 고품질 QA 데이터 생성은 여전히 GPT-4V 의존, 다른 모델들은 부족.
+M-ICL, M-CoT 미성숙: 관련 연구는 초기 단계, 모델의 해당 능력도 약함.
+Embodied agents: 실제 세계에서 지각·추론·계획·실행을 수행할 수 있는 에이전트 개발 필요.
+안전성(safety): MLLMs도 공격에 취약해 편향적/바람직하지 않은 응답 가능 → 안전성 강화 필수.
+
+
+analogy: 유사성
+crux: 요점
+
+Li C, Wong C, Zhang S et al. LLaVA-med: training a large language-and-vision
+assistant for biomedicine in one day. In: Proceedings of the 37th International
+Conference on Neural Information Processing Systems. Red Hook, NY: Curran
+Associates, 2023, 28541–64.
+30. Liu Y, Yang B, Liu Q et al. TextMonkey: an OCR-free large multimodal model
+for understanding document. arXiv: 2403.04473.
+31. Huang J, Yong S, Ma X et al. An embodied gene
+
+
+An embodied generalist agent in 3D world.
+International Conference on Machine Learning, Vienna, Austria, 21–27 July
