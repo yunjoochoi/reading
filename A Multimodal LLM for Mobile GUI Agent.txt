@@ -1,0 +1,52 @@
+MobileFlow: A Multimodal LLM for Mobile GUI Agent
+
+현재로써는 API 호출로만 페이지 레이아웃 인포메이션 액세스가 가능->개인정보 유출 위험을 초래할 수 있음
+ 또 다른 방식으로 VLM이용한다면 사용자 인터페이스를 특정 낮은 해상도로 고정해야 해서 세밀한 이미지 디테일이 손실
+
+Qwen-VL-Chat into GUI
+Mixture of Experts(MoE) 확장 및 새로운 alignment 학습 전략
+하이브리드 비주얼 인코더 → 다양한 해상도의 이미지 입력 지원.
+다국어 GUI 지원
+
+GPT-4V를 활용하는 멀티모달 에이전트들은 GUI에서 중국어(만다린) 텍스트 처리 문제에 직면하며, 여기에 더해 시스템 API 호출, HTML 파싱 과정, 그리고 개인정보 보호 문제가 복합적으로 작용해 어려움이 발생
+
+또, visual encoders are limited by fixed image resolutions
+
+하이브리드 비주얼인코더 
+
+MobileFlow는 QwenVL-Chat의 다국어 이미지 이해 능력을 계승하기 때문에, 전체 규모의 사전학습을 다시 할 필요는 없고, 가벼운 GUI 정렬과 미세조정만으로도 좋은 GUI 에이전트 능력
+
+GUI Grounding
+
+이 과제의 목적은 모델이 텍스트와 이미지 내 특정 영역을 연결
+GUI Referring
+
+특정 bounding box나 텍스트 설명 속 공간적 참조(예: 좌상단, 우하단 등) 또는 순서 참조(예: 첫 번째, 마지막, 오른쪽에서 세 번째 등)가 주어졌을 때, 모델은 해당 위치의 텍스트 정보를 출력
+
+GUI 에이전트 발전 과정에서 중요한 첫걸음을 의미한다. 다만 앞으로 해결해야 할 과제들도 있다. 예를 들어, 환각(hallucination)에 취약하다든지, 다중 이미지 처리에 대한 한계
+
+인용하신 부분을 정리하면 MobileFlow에서 MoE(Mixture of Experts)를 어떻게 적용했는지는 다음과 같습니다:
+
+MobileFlow의 MoE 적용 방식
+Dense → MoE 확장
+기존 VLM의 LLM 부분은 대부분 dense 구조(모든 파라미터 항상 사용).
+MobileFlow는 여기에 MoE 레이어를 추가해서 효율성과 성능을 동시에 확보하려고 함.
+
+확장 방법
+Mixtral-8x7B처럼 **여러 expert를 무작위로 활성화(random activation)**하는 방식을 채택.
+즉, 입력마다 모든 전문가를 쓰는 게 아니라 **라우팅(router)**이 일부 전문가만 선택 → 연산량 절약.
+Expert 초기화 방법
+
+일반적으로 MoE 레이어 = 여러 개의 FFN(Feedforward Network, 즉 MLP)으로 구성.
+
+MobileFlow에서는 QwenVL-Chat이 학습해둔 기존 MLP를 그대로 복제해서 expert로 사용.
+
+한 MoE 레이어 = 동일한 MLP 4개로 시작.
+
+이유
+
+이미 학습된 MLP를 expert 초기화에 사용하면:
+
+무작위 초기화보다 수렴이 빠르고 안정적
+
+최종적으로 성능 향상
