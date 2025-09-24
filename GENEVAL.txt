@@ -1,0 +1,10 @@
+GENEVAL 프레임워크 제안
+Text-to-Image Alignment를 평가하기 위한 오브젝트 기준의 프레임워크
+FID or CLIPScore : 전체적인 평가만을 제공 얼라이먼트, 퀄리티 방면의.
+FID - 아예 텍스트는 고려를 안함
+인간 평가(human evaluation)는 비용이 크고 확장성에 한계.
+기존 자동화 지표(FID, CLIPScore)는 전체적 품질/정합성만 측정 → 세밀한 객체 수준 분석에는 부적합.
+클립의 경우 이미지 텍스트 얼라인먼트 평가하긴 하는데, not strongly correlated with human judgment on complex tasks.
+객체 중심(object-focused) 평가 체계.
+이미지 내 객체 공존(co-occurrence), 위치, 개수, 색상 같은 구성적(compositional) 속성을 평가
+기존 객체 탐지 모델을 활용해 다양한 생성 태스크를 자동 평가.
