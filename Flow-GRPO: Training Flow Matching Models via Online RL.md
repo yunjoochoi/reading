@@ -11,3 +11,13 @@ grpo는 크리틱 없애고 그룹 내에서의 상대평가 도입함: Advantag
 
 그룹 사이즈: 	
 When the group size was reduced to G = 12 and G = 6, training became unstable and eventually collapsed, whereas G = 24 remained stable throughout the process
+
+
+텍스트 렌더링(Visual Text Rendering) 실험을 위해 사용한 프롬프트의 개수는 20,000개
+
+In our settings, we define an text rendering task, where each prompt follows the template “A sign
+that says “text”. Specifically, the placeholder “text” is the exact string that should appear in
+the image. We use GPT4o to produce 20K training prompts and 1K test prompts. Following [58],
+we measure text fidelity with the reward r = max(1 − Ne/Nref, 0), where Ne is the minimum edit
+distance between the rendered text and the target text and Nref is the number of characters inside the
+quotation marks in the prompt. This reward also serves as our metric of text accuracy.
